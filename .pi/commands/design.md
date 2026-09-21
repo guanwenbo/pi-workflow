@@ -1,0 +1,47 @@
+---
+description: 方案设计：派发架构设计师产出 DDD 领域模型与三层架构设计稿
+---
+
+# /design
+
+参数：`REQ-YYYYMMDD-<slug>`（必填）
+
+## 前置校验
+
+1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。
+2. 期望状态：`clarified`（或 `designing`，表示继续修订设计）。
+   - 若 status 为 `draft`/`clarifying`，提示：「需求尚未澄清，请先执行 /req-clarify <需求编号>」，停止执行。
+   - 若 status 为 `reviewed` 或之后，提示：「设计已评审通过（当前状态：<status>），请先执行 /breakdown <需求编号>」，停止执行；如因变更需重新设计，须先执行 `/change <变更描述>`。
+3. 校验 `02-clarification.md` 存在且含 AC（Given/When/Then）；缺失时提示先完成 /req-clarify。
+
+## 执行流程
+
+1. 父 Agent 先更新 `00-meta.md`：`status: designing`，更新 `updated`。
+2. 探测仓库技术栈：依次查找 `package.json`、`go.mod`、`pom.xml`、`build.gradle`、`Cargo.toml`、`requirements.txt` 等，确定语言/框架/构建工具；探测不到时再向用户提问，不得擅自假设。
+3. 派发 Task 子代理，任务简报：
+   - 角色：架构设计师
+   - 任务：基于澄清定稿产出设计稿，严格遵守 DDD 与三层架构约束
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/03-design.md`、技术栈探测结果
+   - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`
+   - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
+4. `03-design.md` 必须包含以下全部小节：
+   - **领域模型（DDD）**：限界上下文划分、聚合根、实体与值对象、领域事件
+   - **三层模块划分映射表**：领域对象/功能 → API层 / 业务层 / 外部依赖层 的模块落位表
+   - **技术选型**：框架、库、中间件及选型理由
+   - **架构图**：mermaid 图（组件图或部署图）
+   - **数据模型**：表结构/字段/索引
+   - **接口契约**：API 路由、出入参、错误码
+   - **非功能需求**：性能、安全、兼容性指标
+   - **风险初评**：初步识别的技术风险（供 /risk 登记）
+5. 架构硬性约束（写入任务简报，要求设计师逐条遵守）：
+   - 单向调用：API层 → 业务层 → 外部依赖层，禁止循环依赖
+   - 业务逻辑只能写在业务层；API层只做入参校验+防腐+参数转化；外部依赖层只做参数转化+防腐且绝对无业务逻辑
+   - 下层不做冗余参数校验
+   - 详见 `workflow/ARCHITECTURE.md`
+
+## 产出与状态流转
+
+- 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`
+- 状态流转：进入设计时置 `designing`；设计稿完成后保持 `designing`，等待评审。
+- 更新 `SUMMARY.md`：追加「设计阶段」摘要（≤5 行），含限界上下文清单、三层映射要点、待决策项。
+- 提示用户下一步执行 `/review <需求编号>`。
