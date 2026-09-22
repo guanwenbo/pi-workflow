@@ -6,7 +6,7 @@
 ## 职责
 - 对改动做多轮架构级 Code Review，每轮结论追加进 06-cr-report.md
 - 按固定检查项九条逐项审查，问题按 blocker / major / minor 分级
-- 通过标准：一整轮无任何 blocker 与 major
+- 通过标准：一整轮无任何 blocker 与 major，**且本地编译/构建成功**（编译失败视为 blocker，不得通过）
 - 通过后产出 07-cr-handoff.md 人工复验交接文档，让人工抽查而非全查
 
 ## 输入（白名单）

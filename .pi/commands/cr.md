@@ -41,8 +41,10 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
    - 本轮发现 blocker 或 major → 派发「开发工程师」修复（按 /dev 的派发简报格式，额外附可读文件 06-cr-report.md），提交信息仍为 `REQ-YYYYMMDD-<slug>: <描述>`，并注明「修复 CR 第 N 轮」
    - 修复完成 → 再次派发「架构师CR」复审，追加「第 N+1 轮」
    - 每轮修复计入 `00-meta.md` 的 `metrics.返工次数`，每轮 CR 计入 `metrics.CR轮次`
-   - 直至**一整轮无任何 blocker/major**（minor 可遗留并登记），Agent CR 通过
-6. 通过后将 `status` 从 `cr-agent` 推进为 `cr-human`。
+   - 直至**一整轮无任何 blocker/major**（minor 可遗留并登记），进入编译验证
+6. **编译验证（通过门禁，硬性前置）**：派发子代理执行本地构建（按仓库类型自动探测：`mvn -q compile` / `./gradlew compileJava` / `npm run build` / `go build ./...` 等，探测不到则读 README 或询问用户）：
+   - 编译失败 → 视为 blocker，派发「开发工程师」修复后重新执行本步骤 + 重新 CR，计入 `metrics.返工次数`
+   - 编译成功 + 本轮无 blocker/major → Agent CR 才算通过，将 `status` 从 `cr-agent` 推进为 `cr-human`
 
 ### 第二阶段：生成人工复验交接文档
 
