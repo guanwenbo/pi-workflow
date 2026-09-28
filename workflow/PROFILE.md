@@ -55,7 +55,7 @@
 | 提交信息 | `REQ-xxx: <描述>` | 强制关联需求编号 |
 | 测试验证口径 | 单测/编译验证必须用项目 pom 真实依赖版本（mvn test，IDEA 同环境：JDK8 + ~/devTools/apache-maven-3.9.2/bin/mvn，本地仓库 /Users/guanbwenbo/maven/worker）；禁止用 scratch 高版本库代替验证 | 教训：mockito 3.x API verifyNoInteractions 在项目 2.19.0 下编译失败 |
 | 设计阶段配置清单 | 方案设计阶段必须产出**配置清单**：逐项写清「配置项名 / 放哪里（properties vs ducc vs 中间件 XML）/ 默认值 / 用途 / 是否需运行期动态调整 / 变更影响」，作为设计稿固定章节与评审检查项 | 落实：templates/03-design.md 配置清单章节 + architect/reviewer 角色检查清单 |
-| 角色模型指定 | **架构师CR（/cr 阶段）统一使用模型 `gpt-6-sol`**（provider：智增增，显示名 GPT-6 Sol）；派发 CR 任务简报时必须带该 model 覆盖，不得用默认模型或降级为其他模型 | 前置：`gpt-6-sol` 需在 PI-Desktop 设置中**加入委派模型目录**，否则 Task 会拒绝（2026-09-28 首次派发即因此被拒）；落实：/cr 派发时 Task(model="gpt-6-sol") |
+| 角色模型指定 | **架构师CR（/cr 阶段）统一使用模型 `custom/gpt-6-sol`**（provider：智增增/自定义，显示名 GPT-6 Sol）；派发 CR 任务简报时必须带该 model 覆盖，不得用默认模型或降级为其他模型 | 前置：需在 PI-Desktop 设置中把该模型加入委派目录（2026-09-28 已加入）；派发时 model 必须写全 `custom/gpt-6-sol`（缺 provider 前缀会被拒）；落实：/cr 派发时 Task(model="custom/gpt-6-sol") |
 
 ## 五、反模式（明确不想要的）
 
