@@ -25,6 +25,7 @@
 | 日志规范 | 中文日志，格式【XXX 层】XXX 服务-入参/出参/异常 | `log.info("【JSF PROVIDER】校验卡有效性-入参param={}", ...)` |
 | 对外接口注释 | 对外接口 javadoc 只写接口功能+出入参契约（字段含义/错误码/重试语义）；内部实现逻辑（开关降级/租户分发/底层调用/映射机制）不写，外部系统无需感知 | 反例：在对外接口注释里写"功能总开关降级返回…不打到卡系统" |
 | 类命名后缀 | 实现类用 `XxxFacadeImpl`/`XxxServiceImpl`/`XxxWrapperImpl` 等 Impl 后缀；`Controller` 只用于对外 web 层（HTTP 接口）；禁止用 Controller 命名 JSF/内部服务实现 | 反例：JSF 门面实现命名 XxxController（存量 CardController 等按 HC-04 不动，新代码不再沿用） |
+| 方法入参数量 | 入参**超过 3 个**必须封装为参数对象（Query/Command/Param）传递，禁止长参数列表 | 反例：`checkVoucherSaleable(Long, List, String, String)` → 改 `checkVoucherSaleable(CashVoucherSaleableQuery)` |
 | （待积累） | | |
 
 ## 三、架构偏好（已确认）
