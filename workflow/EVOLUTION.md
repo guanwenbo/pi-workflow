@@ -28,12 +28,14 @@
 | 编号 | 日期 | 来源需求 | 提案内容 | 影响面（模板/角色/门禁） | 审批结论 |
 |---|---|---|---|---|---|
 | <!-- EP-01 | | REQ-xxx | | | 待审批 --> | |
+| EP-01 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 方案设计阶段新增固定产出「配置清单」：逐项列明配置项名/位置（properties vs ducc vs 中间件XML）/默认值/用途/是否需运行期动态调整/变更影响；评审阶段同步校验分界正确性 | templates/03-design.md、roles/architect.md、roles/reviewer.md、PROFILE.md | 已批准并落实 2026-09-26 |
 
 ## 三、已生效变更日志
 
 | 编号 | 生效日期 | 变更内容 | 落实的文件 |
 |---|---|---|---|
 | HC-01 | 2026-09-24 | 习惯候选 HC-01 生效：新增架构偏好「对外能力通用化」（全局适用） | workflow/PROFILE.md 三、架构偏好 |
+| EP-01 | 2026-09-26 | 流程优化：设计阶段配置清单（ducc/properties 分界 + 配置项名 + 默认值） | workflow/templates/03-design.md、workflow/roles/architect.md、workflow/roles/reviewer.md、workflow/PROFILE.md |
 | HC-02 | 2026-09-24 | 习惯候选 HC-02 生效：新增架构偏好「对外命名与类型统一」 | workflow/PROFILE.md 三、架构偏好 |
 | HC-03 | 2026-09-24 | 习惯候选 HC-03 生效：新增架构偏好「语义归一化」 | workflow/PROFILE.md 三、架构偏好 |
 | HC-04 | 2026-09-24 | 习惯候选 HC-04 生效：新增架构偏好「已有接口影响范围控制」 | workflow/PROFILE.md 三、架构偏好 |
