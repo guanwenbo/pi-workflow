@@ -23,6 +23,7 @@
 | HC-11 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 方法简洁与单一职责：主方法只做流程编排，对象转化/组装/校验拆独立方法；单一职责 + 开闭原则（扩展点用 SPI/策略，不堆 if-else） | 已确认 2026-09-26（用户直接陈述即确认） |
 | HC-12 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 中间件参数配置：JSF/RPC 超时重试等参数在 spring-jsf-consumer.xml 等配置文件（properties 占位符）中配置，禁止代码里用 RpcContext/attachment 动态设置 | 已确认 2026-09-26（用户直接陈述即确认） |
 | HC-13 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 角色模型指定：架构师CR（/cr）统一使用 gpt-6-sol 模型（派发 Task 时显式指定 model） | 已确认 2026-09-28（用户直接指令） |
+| HC-14 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 配置分界判据修正（按变动概率）：业务初期不确定/需运行期调整的阈值一律 ducc（如券码数量上限、试算抵扣上限），稳定不变的（JSF 超时/租户 id/别名/sendpay 位次）才放 properties——修正 HC-05 中「上限/阈值一律 properties」的表述 | 已确认 2026-09-28（用户直接陈述即确认） |
 
 ## 二、流程优化提案区（待审批）
 
@@ -31,6 +32,7 @@
 | <!-- EP-01 | | REQ-xxx | | | 待审批 --> | |
 | EP-01 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 方案设计阶段新增固定产出「配置清单」：逐项列明配置项名/位置（properties vs ducc vs 中间件XML）/默认值/用途/是否需运行期动态调整/变更影响；评审阶段同步校验分界正确性 | templates/03-design.md、roles/architect.md、roles/reviewer.md、PROFILE.md | 已批准并落实 2026-09-26 |
 | EP-02 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | CR 派发简报须写明判定纪律：只有导致功能错误/资损/数据不一致/幂等并发失效/违反架构硬性规则的才判 blocker 或 major；加固建议、更多测试、真实环境验证一律 minor 或登记为不阻塞项；用户已决策事项不得再判 blocker/major，只能记「接受风险 + 上线前置」。理由：本需求前 4 轮 CR 未写纪律导致标准逐步上移（每轮均出现「部分修复」），第 5 轮写明后一次收敛通过 | roles/cr-architect.md（检查清单/判定纪律）、.pi/commands/cr.md（任务简报要点） | 待审批 |
+| EP-03 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 方案评审门禁：任何方案产出（03-design.md 设计稿、CHG-NN 变更单）在进入开发前必须派发一次架构师评审（角色 cr-architect=架构师CR，模型 custom/gpt-6-sol），评审意见回写方案文件末尾「架构师评审意见」章节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | workflow/roles/cr-architect.md（新增方案评审职责与检查项）、workflow/roles/architect.md（产出后提交评审）、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHG-NN.md、workflow/ORCHESTRATOR.md（门禁） | 已批准并落实 2026-09-28（用户直接指令） |
 
 ## 三、已生效变更日志
 
@@ -50,6 +52,8 @@
 | HC-11 | 2026-09-26 | 习惯候选 HC-11 生效：新增编码风格「方法简洁与单一职责」 | workflow/PROFILE.md 二、编码风格 |
 | HC-12 | 2026-09-26 | 习惯候选 HC-12 生效：新增编码风格「中间件参数配置」 | workflow/PROFILE.md 二、编码风格 |
 | HC-13 | 2026-09-28 | 习惯候选 HC-13 生效：架构师CR 使用 gpt-6-sol | workflow/PROFILE.md 四、协作与流程偏好 |
+| EP-03 | 2026-09-28 | 流程优化：方案评审门禁（所有方案必须过架构师评审，意见回写方案文件） | workflow/roles/cr-architect.md、workflow/roles/architect.md、workflow/ORCHESTRATOR.md、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHG-NN.md |
+| HC-14 | 2026-09-28 | 习惯候选 HC-14 生效：配置分界判据=变动概率（修正 HC-05 表述） | workflow/PROFILE.md 二、编码风格「配置化」行 |
 
 ## 四、复盘数据总览（跨需求趋势）
 

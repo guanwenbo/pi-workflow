@@ -28,14 +28,15 @@ description: 变更管理：创建变更单、评估影响，审批后回流受�
    - **影响分析**：影响范围（涉及的档案文件/代码模块/任务编号）、工期影响（基于 05-tasks.md 工时重估）、风险影响（新增/升级的风险，同步登记到 10-risks.md）
    - **受影响阶段判定**：列出需回流的阶段（如 clarified → 需重跑 /design；developing → 需重跑 /dev 与 /cr）
    - **审批结论**：留空待用户填写（批准/拒绝 + 日期 + 备注）
-4. 父 Agent 更新 `00-meta.md`：`status: change-requested`，更新 `updated`，并将变更单全文呈现给用户审批。
-5. 用户审批后：
+4. **架构师方案评审（门禁，EP-03）**：变更单产出后、提交用户审批前，派发 Task 子代理做方案评审（角色 架构师CR=cr-architect，模型 `custom/gpt-6-sol`），评审意见**追加到 `changes/CHG-NN.md` 末尾「架构师评审意见」章节**；简报须写明判定纪律（用户已决策事项不得判 blocker|major）；不通过先修订再复评（同一方案最多复评 2 轮，未收敛上报用户决策）。
+5. 父 Agent 更新 `00-meta.md`：`status: change-requested`，更新 `updated`，并将变更单全文呈现给用户审批。
+6. 用户审批后：
    - **批准** → 在 CHG-NN.md 填写审批结论；父 Agent 按「受影响阶段判定」将 status 回退到对应阶段的状态（如回到 `clarified`/`designing`/`developing`），并明确提示用户下一步执行哪个命令（如「请执行 /design <需求编号>」）
    - **拒绝** → 在 CHG-NN.md 填写拒绝结论；status 恢复为变更前的原状态
-6. 变更引起的返工计入 `00-meta.md` 的 `metrics.返工次数`。
+7. 变更引起的返工计入 `00-meta.md` 的 `metrics.返工次数`。
 
 ## 产出与状态流转
 
 - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/changes/CHG-NN.md`；必要时更新 `10-risks.md`
-- 状态流转：发起时置 `change-requested`；审批批准后回退到受影响阶段状态，拒绝则恢复原状态。
+- 状态流转：发起时置 `change-requested`；**变更单产出后先过架构师方案评审（EP-03 门禁）**，评审通过后再交用户审批；审批批准后回退到受影响阶段状态，拒绝则恢复原状态。
 - 更新 `SUMMARY.md`：追加「变更 CHG-NN」摘要（≤5 行），含变更原因、影响范围、审批结论。

@@ -21,7 +21,7 @@
 | 空值判断 | 用 `Objects.isNull()` / `Objects.nonNull()`，禁止 `== null` / `!= null` 裸判 | `if (Objects.isNull(param.getTenantId()))` |
 | 工具类 | 尽量使用 apache 工具类（commons-lang3 等），不手写字符串/集合判空等 | `StringUtils.isBlank`、`CollectionUtils.isEmpty` |
 | 入参判空 | 入参含 tenantId 必须判空（不能为 null） | 门面/入口第一道口子校验 |
-| 配置化 | **静态配置（上限/阈值/超时/租户/别名等不常变动的）一律 properties**；**仅需运行期动态调整的（降级开关、运营开关）才用 ducc**。禁止把不常变动的配置放 ducc | 正例：券数量上限 297/50、JSF 超时、抵扣上限→properties；开关→ducc。反例：把超时/上限挂 ducc（需重启的配置不用上 ducc） |
+| 配置化 | 分界判据=**变动概率**：业务初期不确定 / 需运行期调整的（上限、阈值、运营参数）一律 **ducc**；稳定不变的（JSF 超时/重试、租户 id、别名、sendpay 位次等）才放 **properties**。禁止把初期易变的配置放 properties（改一次要发版重启），也不要把稳定配置挂 ducc | 正例：券码数量上限、试算抵扣上限、转券开关→ducc；JSF 超时/租户 id/别名→properties。反例：把券数量上限 297/50 放 properties（业务初期频繁调整） |
 | 日志规范 | 中文日志，格式【XXX 层】XXX 服务-入参/出参/异常 | `log.info("【JSF PROVIDER】校验卡有效性-入参param={}", ...)` |
 | 对外接口注释 | 对外接口 javadoc 只写接口功能+出入参契约（字段含义/错误码/重试语义）；内部实现逻辑（开关降级/租户分发/底层调用/映射机制）不写，外部系统无需感知 | 反例：在对外接口注释里写"功能总开关降级返回…不打到卡系统" |
 | 类命名后缀 | 实现类用 `XxxFacadeImpl`/`XxxServiceImpl`/`XxxWrapperImpl` 等 Impl 后缀；`Controller` 只用于对外 web 层（HTTP 接口）；禁止用 Controller 命名 JSF/内部服务实现 | 反例：JSF 门面实现命名 XxxController（存量 CardController 等按 HC-04 不动，新代码不再沿用） |
@@ -56,6 +56,7 @@
 | 测试验证口径 | 单测/编译验证必须用项目 pom 真实依赖版本（mvn test，IDEA 同环境：JDK8 + ~/devTools/apache-maven-3.9.2/bin/mvn，本地仓库 /Users/guanbwenbo/maven/worker）；禁止用 scratch 高版本库代替验证 | 教训：mockito 3.x API verifyNoInteractions 在项目 2.19.0 下编译失败 |
 | 设计阶段配置清单 | 方案设计阶段必须产出**配置清单**：逐项写清「配置项名 / 放哪里（properties vs ducc vs 中间件 XML）/ 默认值 / 用途 / 是否需运行期动态调整 / 变更影响」，作为设计稿固定章节与评审检查项 | 落实：templates/03-design.md 配置清单章节 + architect/reviewer 角色检查清单 |
 | 角色模型指定 | **架构师CR（/cr 阶段）统一使用模型 `custom/gpt-6-sol`**（provider：智增增/自定义，显示名 GPT-6 Sol）；派发 CR 任务简报时必须带该 model 覆盖，不得用默认模型或降级为其他模型 | 前置：需在 PI-Desktop 设置中把该模型加入委派目录（2026-09-28 已加入）；派发时 model 必须写全 `custom/gpt-6-sol`（缺 provider 前缀会被拒）；落实：/cr 派发时 Task(model="custom/gpt-6-sol") |
+| 方案评审门禁 | **任何方案产出（`03-design.md` 设计稿、`CHG-NN.md` 变更单）在进入开发前必须派发一次架构师评审**（角色 cr-architect=架构师CR，模型 `custom/gpt-6-sol`）；评审意见回写方案文件末尾「架构师评审意见」章节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | 落实：roles/cr-architect.md（方案评审职责/检查项）+ roles/architect.md（产出后提交评审）+ ORCHESTRATOR.md（门禁）+ .pi/commands/design.md、change.md + templates/03-design.md、CHG-NN.md |
 
 ## 五、反模式（明确不想要的）
 
