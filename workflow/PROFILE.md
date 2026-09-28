@@ -27,7 +27,7 @@
 | 类命名后缀 | 实现类用 `XxxFacadeImpl`/`XxxServiceImpl`/`XxxWrapperImpl` 等 Impl 后缀；`Controller` 只用于对外 web 层（HTTP 接口）；禁止用 Controller 命名 JSF/内部服务实现 | 反例：JSF 门面实现命名 XxxController（存量 CardController 等按 HC-04 不动，新代码不再沿用） |
 | 方法入参数量 | 入参**超过 3 个**必须封装为参数对象（Query/Command/Param）传递，禁止长参数列表 | 反例：`checkVoucherSaleable(Long, List, String, String)` → 改 `checkVoucherSaleable(CashVoucherSaleableQuery)` |
 | （待积累） | | |
-
+| RPC 调用方式 | RPC 层禁止泛化调用：不得用「统一 invoke 入口 + 字符串方法名 + Map 参数」的模板形态；必须逐方法显式调用强类型/明确的远端方法。第三方 SDK 若本身是 Map 弱类型出入参，须在每个 wrapper 方法内显式调用 + 强类型模型转换，Map 只允许出现在 wrapper 边界内 | 反例：`invoke("search", param, () -> cashVouchers.search(param))` |
 ## 三、架构偏好（已确认）
 
 | 维度 | 偏好 |
