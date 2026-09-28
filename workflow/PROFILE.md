@@ -48,6 +48,7 @@
 | 维度 | 偏好 | 备注 |
 |---|---|---|
 | 提交信息 | `REQ-xxx: <描述>` | 强制关联需求编号 |
+| 测试验证口径 | 单测/编译验证必须用项目 pom 真实依赖版本（mvn test，IDEA 同环境：JDK8 + ~/devTools/apache-maven-3.9.2/bin/mvn，本地仓库 /Users/guanbwenbo/maven/worker）；禁止用 scratch 高版本库代替验证 | 教训：mockito 3.x API verifyNoInteractions 在项目 2.19.0 下编译失败 |
 | （待积累） | | |
 
 ## 五、反模式（明确不想要的）
