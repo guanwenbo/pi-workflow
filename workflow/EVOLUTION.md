@@ -17,6 +17,7 @@
 | HC-05 | 2026-09-25 | REQ-20260922-jiabao-cash-coupon | 编码风格 5 条：空值判断用 Objects.isNull/nonNull；尽量用 apache 工具类；入参 tenantId 必判空；上限/阈值配置化（properties，常变动走 ducc）；日志中文格式【XXX 层】XXX 服务-入参 | 已确认 2026-09-25（用户直接陈述即确认） |
 | HC-06 | 2026-09-25 | REQ-20260922-jiabao-cash-coupon | 测试验证口径：子代理验证单测必须用项目 pom 真实依赖版本（mvn test，worker 仓库），禁止用 scratch 高版本库（如 mockito 3.x）代替验证——曾导致 verifyNoInteractions（3.x API）在项目 2.19.0 下编译失败 | 已确认 2026-09-25 |
 | HC-07 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 对外接口注释：javadoc 只写接口功能+出入参契约，内部实现逻辑（开关降级/租户分发/底层调用/映射机制）不写，外部系统无需感知 | 已确认 2026-09-26（用户直接陈述即确认） |
+| HC-08 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 类命名规范：实现类用 Impl 后缀（XxxFacadeImpl/ServiceImpl/WrapperImpl）；Controller 仅用于对外 web 层，禁止用于 JSF/内部服务实现 | 已确认 2026-09-26（用户直接陈述即确认） |
 
 ## 二、流程优化提案区（待审批）
 
@@ -35,6 +36,7 @@
 | HC-05 | 2026-09-25 | 习惯候选 HC-05 生效：新增编码风格 5 条（空值判断/工具类/tenantId 判空/配置化/中文日志格式） | workflow/PROFILE.md 二、编码风格 |
 | HC-06 | 2026-09-25 | 习惯候选 HC-06 生效：新增流程偏好「测试验证口径」（真实依赖 mvn test） | workflow/PROFILE.md 四、协作与流程偏好 |
 | HC-07 | 2026-09-26 | 习惯候选 HC-07 生效：新增编码风格「对外接口注释」 | workflow/PROFILE.md 二、编码风格 |
+| HC-08 | 2026-09-26 | 习惯候选 HC-08 生效：新增编码风格「类命名后缀」 | workflow/PROFILE.md 二、编码风格 |
 
 ## 四、复盘数据总览（跨需求趋势）
 
