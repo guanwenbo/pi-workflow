@@ -18,6 +18,11 @@
 
 | 维度 | 偏好 | 示例/反例 |
 |---|---|---|
+| 空值判断 | 用 `Objects.isNull()` / `Objects.nonNull()`，禁止 `== null` / `!= null` 裸判 | `if (Objects.isNull(param.getTenantId()))` |
+| 工具类 | 尽量使用 apache 工具类（commons-lang3 等），不手写字符串/集合判空等 | `StringUtils.isBlank`、`CollectionUtils.isEmpty` |
+| 入参判空 | 入参含 tenantId 必须判空（不能为 null） | 门面/入口第一道口子校验 |
+| 配置化 | 上限/阈值类配置写 properties；经常变动的写 ducc | 如券数量上限 297→properties，开关/限额→ducc |
+| 日志规范 | 中文日志，格式【XXX 层】XXX 服务-入参/出参/异常 | `log.info("【JSF PROVIDER】校验卡有效性-入参param={}", ...)` |
 | （待积累） | | |
 
 ## 三、架构偏好（已确认）
