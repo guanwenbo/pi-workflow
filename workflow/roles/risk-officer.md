@@ -16,7 +16,7 @@
 
 ## 产出
 - requirements/REQ-YYYYMMDD-<slug>/10-risks.md（按 workflow/templates/10-risks.md 模板，风险登记册：风险项/概率/影响/等级/应对/Owner/状态）
-- 变更场景下产出 requirements/REQ-YYYYMMDD-<slug>/changes/CHG-NN.md（变更单：原因/影响分析[范围/工期/风险]/审批结论；NN 从 01 起递增）
+- 变更场景下产出 requirements/REQ-YYYYMMDD-<slug>/changes/CHANGES.md（变更单：原因/影响分析[范围/工期/风险]/审批结论；NN 从 01 起递增）
 - 更新 requirements/REQ-YYYYMMDD-<slug>/SUMMARY.md（本阶段摘要 ≤5 行）
 
 ## 检查清单
@@ -30,7 +30,7 @@
 
 ## 开工前必读
 - 任务简报中列出的白名单文件
-- workflow/templates/10-risks.md 与 workflow/templates/CHG-NN.md 模板（如存在）
+- workflow/templates/10-risks.md 与 workflow/templates/CHANGES.md 模板（如存在）
 
 ## 返回格式
 ≤200 字：风险总数与高等级数 / 变更影响结论 + 产出路径 + 待决策事项（如待审批变更）。

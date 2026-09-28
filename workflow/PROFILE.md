@@ -56,7 +56,8 @@
 | 测试验证口径 | 单测/编译验证必须用项目 pom 真实依赖版本（mvn test，IDEA 同环境：JDK8 + ~/devTools/apache-maven-3.9.2/bin/mvn，本地仓库 /Users/guanbwenbo/maven/worker）；禁止用 scratch 高版本库代替验证 | 教训：mockito 3.x API verifyNoInteractions 在项目 2.19.0 下编译失败 |
 | 设计阶段配置清单 | 方案设计阶段必须产出**配置清单**：逐项写清「配置项名 / 放哪里（properties vs ducc vs 中间件 XML）/ 默认值 / 用途 / 是否需运行期动态调整 / 变更影响」，作为设计稿固定章节与评审检查项 | 落实：templates/03-design.md 配置清单章节 + architect/reviewer 角色检查清单 |
 | 角色模型指定 | **架构师CR（/cr 阶段）统一使用模型 `custom/gpt-6-sol`**（provider：智增增/自定义，显示名 GPT-6 Sol）；派发 CR 任务简报时必须带该 model 覆盖，不得用默认模型或降级为其他模型 | 前置：需在 PI-Desktop 设置中把该模型加入委派目录（2026-09-28 已加入）；派发时 model 必须写全 `custom/gpt-6-sol`（缺 provider 前缀会被拒）；落实：/cr 派发时 Task(model="custom/gpt-6-sol") |
-| 方案评审门禁 | **任何方案产出（`03-design.md` 设计稿、`CHG-NN.md` 变更单）在进入开发前必须派发一次架构师评审**（角色 cr-architect=架构师CR，模型 `custom/gpt-6-sol`）；评审意见回写方案文件末尾「架构师评审意见」章节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | 落实：roles/cr-architect.md（方案评审职责/检查项）+ roles/architect.md（产出后提交评审）+ ORCHESTRATOR.md（门禁）+ .pi/commands/design.md、change.md + templates/03-design.md、CHG-NN.md |
+| 方案评审门禁 | **任何方案产出（`03-design.md` 设计稿、`changes/CHANGES.md` 中的变更节）在进入开发前必须派发一次架构师评审**（角色 cr-architect=架构师CR，模型 `custom/gpt-6-sol`）；评审意见回写方案文件/变更节的「架构师评审意见」小节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | 落实：roles/cr-architect.md（方案评审职责/检查项）+ roles/architect.md（产出后提交评审）+ ORCHESTRATOR.md（门禁）+ .pi/commands/design.md、change.md + templates/03-design.md、CHANGES.md |
+| 变更台账与文档精简 | **每个需求只保留一个变更文件**：`changes/CHANGES.md` 单文件台账，每次变更**追加一节**（CHG-01 起自增），**禁止**每次变更新建 `CHG-NN.md` 文件；阶段文档不重复堆叠（实施细则并入所属阶段文档，如派发简报并入 `05-tasks.md`），同一需求档案控制在 10 个文档量级 | 落实：templates/CHANGES.md（替换原 CHG-NN.md 模板）+ .pi/commands/change.md + roles/risk-officer.md + ORCHESTRATOR.md/WORKFLOW.md；2026-09-28 首个需求已按此整理（CHG-01~05 合并为单文件台账） |
 
 ## 五、反模式（明确不想要的）
 

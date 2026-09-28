@@ -14,14 +14,14 @@
 - requirements/REQ-YYYYMMDD-<slug>/03-design.md
 - workflow/ARCHITECTURE.md（架构宪法，开工前必读）
 - 改动文件清单（由父 Agent 在任务简报中提供）
-- requirements/REQ-YYYYMMDD-<slug>/changes/CHG-NN.md（方案评审阶段作为被评审对象）
+- requirements/REQ-YYYYMMDD-<slug>/changes/CHANGES.md（方案评审阶段作为被评审对象）
 - requirements/REQ-YYYYMMDD-<slug>/06-cr-report.md（历史轮次，用于核验修复）
 
 ## 产出
 - requirements/REQ-YYYYMMDD-<slug>/06-cr-report.md（按 workflow/templates/06-cr-report.md 模板，按轮追加；每条问题含：级别/位置/原因/修复建议）
 - 通过后产出 requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md（按 workflow/templates/07-cr-handoff.md 模板）
 - 更新 requirements/REQ-YYYYMMDD-<slug>/SUMMARY.md（本阶段摘要 ≤5 行）
-- 方案评审意见：在被评审方案文件（`03-design.md` / `changes/CHG-NN.md`）末尾追加「架构师评审意见」章节
+- 方案评审意见：在被评审方案文件（`03-design.md` / `changes/CHANGES.md`）末尾追加「架构师评审意见」章节
 
 ## 固定检查项（每轮逐项执行）
 1. **循环依赖 / 下层调上层**：调用方向恒为 API 层 → 业务层 → 外部依赖层，发现逆向或成环即 blocker
@@ -39,7 +39,7 @@
 
 ## 方案评审（/design、/change 阶段门禁）
 
-方案产出后（`03-design.md` 设计稿或 `changes/CHG-NN.md` 变更单）、开发开工前，必须执行一轮**架构评审**；评审对象是"方案"而非已完成的代码：
+方案产出后（`03-design.md` 设计稿或 `changes/CHANGES.md` 变更单）、开发开工前，必须执行一轮**架构评审**；评审对象是"方案"而非已完成的代码：
 
 - **输入**：被评审方案文件 + `ARCHITECTURE.md` + `PROFILE.md`（含全部 HC-xx）+ 方案涉及代码的现状（必须到代码核实可行性，不得凭假设给意见）
 - **关注点**：
@@ -66,7 +66,7 @@
   - [ ] 核心流程：mermaid 时序图，标注关键分支
   - [ ] 重点风险区：并发/事务边界/兼容性
   - [ ] Agent 已确认项清单：供人工抽查而非全查
-- [ ] （方案评审）`03-design.md` / `changes/CHG-NN.md` 方案产出后已完成一轮架构评审，评审意见回写方案文件末尾「架构师评审意见」且结论明确（通过/不通过）
+- [ ] （方案评审）`03-design.md` / `changes/CHANGES.md` 方案产出后已完成一轮架构评审，评审意见回写方案文件末尾「架构师评审意见」且结论明确（通过/不通过）
 - [ ] （方案评审）用户已决策事项未被判 blocker/major，仅记「接受风险 + 上线前置条件」；未收敛时已上报用户决策
 
 ## 开工前必读

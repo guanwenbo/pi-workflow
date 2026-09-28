@@ -45,7 +45,7 @@ draft → clarifying → clarified → designing → reviewed → planned
 | `/retro` | `released` | `archived` |
 
 **门禁执行**：命令开头先读 `00-meta.md` 校验状态，不满足时明确提示「请先执行 /xxx」，禁止静默跳过。
-- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHG-NN.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/gpt-6-sol`），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
+- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/gpt-6-sol`），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 
 ## 五、派发协议（父 → 子）
 
@@ -62,7 +62,7 @@ draft → clarifying → clarified → designing → reviewed → planned
 任务简报（方案评审，/design、/change 阶段）:
   角色: "架构师CR"
   任务: "对 <方案文件> 做架构级方案评审（评审对象是方案，不是代码）"
-  可读文件: ["03-design.md 或 changes/CHG-NN.md", "workflow/ARCHITECTURE.md", "workflow/PROFILE.md", "方案涉及代码的现状文件"]
+  可读文件: ["03-design.md 或 changes/CHANGES.md", "workflow/ARCHITECTURE.md", "workflow/PROFILE.md", "方案涉及代码的现状文件"]
   产出文件: "<被评审方案文件>（末尾追加「架构师评审意见」章节）"
   返回格式: "结论(通过/不通过) + blocker/major/minor 计数 + 产出路径，≤200字"
   模型: "custom/gpt-6-sol（HC-13）"

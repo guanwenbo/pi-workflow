@@ -38,7 +38,7 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | `/test-plan` | 测试计划 | 测试工程师 | 08-test-plan.md |
 | `/pre-release` | 上线检查 | 发布工程师 | 09-release.md |
 | `/risk` | 风险管控（任意阶段） | 风险官 | 10-risks.md |
-| `/change <描述>` | 变更管理（任意阶段） | 风险官 | changes/CHG-NN.md |
+| `/change <描述>` | 变更管理（任意阶段） | 风险官 | changes/CHANGES.md |
 | `/retro` | 归档复盘 | 复盘主持 | 11-retro.md + 流程优化提案 |
 
 ## 五、标准流程

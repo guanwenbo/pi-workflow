@@ -32,7 +32,8 @@
 | <!-- EP-01 | | REQ-xxx | | | 待审批 --> | |
 | EP-01 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 方案设计阶段新增固定产出「配置清单」：逐项列明配置项名/位置（properties vs ducc vs 中间件XML）/默认值/用途/是否需运行期动态调整/变更影响；评审阶段同步校验分界正确性 | templates/03-design.md、roles/architect.md、roles/reviewer.md、PROFILE.md | 已批准并落实 2026-09-26 |
 | EP-02 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | CR 派发简报须写明判定纪律：只有导致功能错误/资损/数据不一致/幂等并发失效/违反架构硬性规则的才判 blocker 或 major；加固建议、更多测试、真实环境验证一律 minor 或登记为不阻塞项；用户已决策事项不得再判 blocker/major，只能记「接受风险 + 上线前置」。理由：本需求前 4 轮 CR 未写纪律导致标准逐步上移（每轮均出现「部分修复」），第 5 轮写明后一次收敛通过 | roles/cr-architect.md（检查清单/判定纪律）、.pi/commands/cr.md（任务简报要点） | 待审批 |
-| EP-03 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 方案评审门禁：任何方案产出（03-design.md 设计稿、CHG-NN 变更单）在进入开发前必须派发一次架构师评审（角色 cr-architect=架构师CR，模型 custom/gpt-6-sol），评审意见回写方案文件末尾「架构师评审意见」章节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | workflow/roles/cr-architect.md（新增方案评审职责与检查项）、workflow/roles/architect.md（产出后提交评审）、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHG-NN.md、workflow/ORCHESTRATOR.md（门禁） | 已批准并落实 2026-09-28（用户直接指令） |
+| EP-03 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 方案评审门禁：任何方案产出（03-design.md 设计稿、changes/CHANGES.md 中的变更节）在进入开发前必须派发一次架构师评审（角色 cr-architect=架构师CR，模型 custom/gpt-6-sol），评审意见回写方案文件/变更节的「架构师评审意见」小节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | workflow/roles/cr-architect.md（新增方案评审职责与检查项）、workflow/roles/architect.md（产出后提交评审）、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHANGES.md、workflow/ORCHESTRATOR.md（门禁） | 已批准并落实 2026-09-28（用户直接指令） |
+| EP-04 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 文档精简与单文件变更台账：每个需求**只保留一个变更文件** `changes/CHANGES.md`，每次变更**追加一节**（CHG-01 起自增），禁止每次变更新建 `CHG-NN.md`；阶段文档不重复堆叠（实施细则并入所属阶段文档，如派发简报并入 `05-tasks.md`），同一需求档案控制在 10 个文档量级 | workflow/templates/CHANGES.md（替代 CHG-NN.md）、.pi/commands/change.md、workflow/roles/risk-officer.md、workflow/ORCHESTRATOR.md、workflow/WORKFLOW.md、workflow/PROFILE.md | 已批准并落实 2026-09-28（用户直接指令："纳入 不过要整理一下 不要有过多的文档 每次的 changes 只有一个 不要搞 N 个"） |
 
 ## 三、已生效变更日志
 
@@ -52,8 +53,9 @@
 | HC-11 | 2026-09-26 | 习惯候选 HC-11 生效：新增编码风格「方法简洁与单一职责」 | workflow/PROFILE.md 二、编码风格 |
 | HC-12 | 2026-09-26 | 习惯候选 HC-12 生效：新增编码风格「中间件参数配置」 | workflow/PROFILE.md 二、编码风格 |
 | HC-13 | 2026-09-28 | 习惯候选 HC-13 生效：架构师CR 使用 gpt-6-sol | workflow/PROFILE.md 四、协作与流程偏好 |
-| EP-03 | 2026-09-28 | 流程优化：方案评审门禁（所有方案必须过架构师评审，意见回写方案文件） | workflow/roles/cr-architect.md、workflow/roles/architect.md、workflow/ORCHESTRATOR.md、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHG-NN.md |
+| EP-03 | 2026-09-28 | 流程优化：方案评审门禁（所有方案必须过架构师评审，意见回写方案文件） | workflow/roles/cr-architect.md、workflow/roles/architect.md、workflow/ORCHESTRATOR.md、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHANGES.md |
 | HC-14 | 2026-09-28 | 习惯候选 HC-14 生效：配置分界判据=变动概率（修正 HC-05 表述） | workflow/PROFILE.md 二、编码风格「配置化」行 |
+| EP-04 | 2026-09-28 | 流程优化：文档精简与单文件变更台账（changes/CHANGES.md 单文件，每次变更追加一节；阶段文档合并，档案控制在 10 个文档量级） | workflow/templates/CHANGES.md、.pi/commands/change.md、workflow/roles/risk-officer.md、workflow/ORCHESTRATOR.md、workflow/WORKFLOW.md、workflow/PROFILE.md |
 
 ## 四、复盘数据总览（跨需求趋势）
 
