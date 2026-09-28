@@ -55,6 +55,7 @@
 | 提交信息 | `REQ-xxx: <描述>` | 强制关联需求编号 |
 | 测试验证口径 | 单测/编译验证必须用项目 pom 真实依赖版本（mvn test，IDEA 同环境：JDK8 + ~/devTools/apache-maven-3.9.2/bin/mvn，本地仓库 /Users/guanbwenbo/maven/worker）；禁止用 scratch 高版本库代替验证 | 教训：mockito 3.x API verifyNoInteractions 在项目 2.19.0 下编译失败 |
 | 设计阶段配置清单 | 方案设计阶段必须产出**配置清单**：逐项写清「配置项名 / 放哪里（properties vs ducc vs 中间件 XML）/ 默认值 / 用途 / 是否需运行期动态调整 / 变更影响」，作为设计稿固定章节与评审检查项 | 落实：templates/03-design.md 配置清单章节 + architect/reviewer 角色检查清单 |
+| 角色模型指定 | **架构师CR（/cr 阶段）统一使用模型 `gpt-6-sol`**；派发 CR 任务简报时必须带该 model 覆盖，不得用默认模型或降级为其他模型 | 落实：/cr 派发时 Task(model="gpt-6-sol") |
 
 ## 五、反模式（明确不想要的）
 

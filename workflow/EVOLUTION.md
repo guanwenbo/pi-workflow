@@ -22,6 +22,7 @@
 | HC-10 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | RPC 层禁止泛化调用：不得用「统一 invoke 入口 + 字符串方法名 + Map 参数」模板；第三方弱类型 Map SDK 须逐方法显式调用+强类型转换，Map 仅限 wrapper 边界内 | 已确认 2026-09-26（用户直接陈述即确认） |
 | HC-11 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 方法简洁与单一职责：主方法只做流程编排，对象转化/组装/校验拆独立方法；单一职责 + 开闭原则（扩展点用 SPI/策略，不堆 if-else） | 已确认 2026-09-26（用户直接陈述即确认） |
 | HC-12 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 中间件参数配置：JSF/RPC 超时重试等参数在 spring-jsf-consumer.xml 等配置文件（properties 占位符）中配置，禁止代码里用 RpcContext/attachment 动态设置 | 已确认 2026-09-26（用户直接陈述即确认） |
+| HC-13 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 角色模型指定：架构师CR（/cr）统一使用 gpt-6-sol 模型（派发 Task 时显式指定 model） | 已确认 2026-09-28（用户直接指令） |
 
 ## 二、流程优化提案区（待审批）
 
@@ -47,6 +48,7 @@
 | HC-10 | 2026-09-26 | 习惯候选 HC-10 生效：新增编码风格「RPC 调用方式」 | workflow/PROFILE.md 二、编码风格 |
 | HC-11 | 2026-09-26 | 习惯候选 HC-11 生效：新增编码风格「方法简洁与单一职责」 | workflow/PROFILE.md 二、编码风格 |
 | HC-12 | 2026-09-26 | 习惯候选 HC-12 生效：新增编码风格「中间件参数配置」 | workflow/PROFILE.md 二、编码风格 |
+| HC-13 | 2026-09-28 | 习惯候选 HC-13 生效：架构师CR 使用 gpt-6-sol | workflow/PROFILE.md 四、协作与流程偏好 |
 
 ## 四、复盘数据总览（跨需求趋势）
 
