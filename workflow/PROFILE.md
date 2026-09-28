@@ -28,6 +28,7 @@
 | 方法入参数量 | 入参**超过 3 个**必须封装为参数对象（Query/Command/Param）传递，禁止长参数列表 | 反例：`checkVoucherSaleable(Long, List, String, String)` → 改 `checkVoucherSaleable(CashVoucherSaleableQuery)` |
 | RPC 调用方式 | RPC 层禁止泛化/类泛化调用：不得用「统一入口 + 字符串方法名 / 传 lambda（函数式接口）+ Map 参数」的模板形态，**每个方法内必须直接出现远端调用语句**（如 `cashVouchers.search(param)`）。允许抽取**不接收 lambda/方法名**的通用处理方法（异常分类、超时设置与清理、空返回判定）。第三方 SDK 若本身是 Map 弱类型出入参，Map 只允许出现在 wrapper 边界内 | 反例：`invokeCashVouchers(cashVouchers::search, "购券可售卖校验", param)`；正例：方法内直接 `cashVouchers.search(param)` + `throw mapRpcException(e, scene, param)` |
 | 方法简洁与单一职责 | 每个方法尽可能简洁：主方法只负责流程编排（每步一行调用，不做细节），对象转化/组装/校验等拆为独立方法；遵守单一职责（一个方法一件事）与开闭原则（扩展点用 SPI/策略/分发表，不硬编码 if-else 分支堆砌） | 反例：主方法里内联 Map→模型转换、循环组装 DTO、多段 if 分支 |
+| 中间件参数配置 | JSF/HTTP/RPC 等中间件的超时、重试等参数必须在配置文件（如 bootstrap 的 `META-INF/spring/spring-jsf-consumer.xml`，值走 properties/占位符）中配置；禁止在代码里通过 RpcContext/attachment 等运行时 API 动态设置调参 | 反例：`RpcContext.getContext().setAttachment(Constants.HIDDEN_KEY_REQUEST_TIMEOUT, timeout)` |
 
 ## 三、架构偏好（已确认）
 
