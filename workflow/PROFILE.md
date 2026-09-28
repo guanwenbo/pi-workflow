@@ -21,7 +21,7 @@
 | 空值判断 | 用 `Objects.isNull()` / `Objects.nonNull()`，禁止 `== null` / `!= null` 裸判 | `if (Objects.isNull(param.getTenantId()))` |
 | 工具类 | 尽量使用 apache 工具类（commons-lang3 等），不手写字符串/集合判空等 | `StringUtils.isBlank`、`CollectionUtils.isEmpty` |
 | 入参判空 | 入参含 tenantId 必须判空（不能为 null） | 门面/入口第一道口子校验 |
-| 配置化 | 上限/阈值类配置写 properties；经常变动的写 ducc | 如券数量上限 297→properties，开关/限额→ducc |
+| 配置化 | **静态配置（上限/阈值/超时/租户/别名等不常变动的）一律 properties**；**仅需运行期动态调整的（降级开关、运营开关）才用 ducc**。禁止把不常变动的配置放 ducc | 正例：券数量上限 297/50、JSF 超时、抵扣上限→properties；开关→ducc。反例：把超时/上限挂 ducc（需重启的配置不用上 ducc） |
 | 日志规范 | 中文日志，格式【XXX 层】XXX 服务-入参/出参/异常 | `log.info("【JSF PROVIDER】校验卡有效性-入参param={}", ...)` |
 | 对外接口注释 | 对外接口 javadoc 只写接口功能+出入参契约（字段含义/错误码/重试语义）；内部实现逻辑（开关降级/租户分发/底层调用/映射机制）不写，外部系统无需感知 | 反例：在对外接口注释里写"功能总开关降级返回…不打到卡系统" |
 | 类命名后缀 | 实现类用 `XxxFacadeImpl`/`XxxServiceImpl`/`XxxWrapperImpl` 等 Impl 后缀；`Controller` 只用于对外 web 层（HTTP 接口）；禁止用 Controller 命名 JSF/内部服务实现 | 反例：JSF 门面实现命名 XxxController（存量 CardController 等按 HC-04 不动，新代码不再沿用） |
