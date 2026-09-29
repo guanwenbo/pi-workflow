@@ -59,6 +59,7 @@
 | 方案评审门禁 | **任何方案产出（`03-design.md` 设计稿、`changes/CHANGES.md` 中的变更节）在进入开发前必须派发一次架构师评审**（角色 cr-architect=架构师CR，模型 `custom/gpt-6-sol`）；评审意见回写方案文件/变更节的「架构师评审意见」小节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | 落实：roles/cr-architect.md（方案评审职责/检查项）+ roles/architect.md（产出后提交评审）+ ORCHESTRATOR.md（门禁）+ .pi/commands/design.md、change.md + templates/03-design.md、CHANGES.md |
 | 任何改动必须过架构师CR | 需求内**所有**代码改动（含 /dev 产出、CR 修复、minor 加固、父 Agent 直接小修）合入前必须至少过一轮架构师CR（`custom/gpt-6-sol`）；允许聚焦增量 CR（只评审该增量 commit），不得以"改动小"为由跳过；未过 CR 的改动不得视为完成/推进状态/上线 | 落实：EP-05 + .pi/commands/cr.md（增量 CR 说明）+ roles/cr-architect.md + ORCHESTRATOR.md |
 | 变更台账与文档精简 | **每个需求只保留一个变更文件**：`changes/CHANGES.md` 单文件台账，每次变更**追加一节**（CHG-01 起自增），**禁止**每次变更新建 `CHG-NN.md` 文件；阶段文档不重复堆叠（实施细则并入所属阶段文档，如派发简报并入 `05-tasks.md`），同一需求档案控制在 10 个文档量级 | 落实：templates/CHANGES.md（替换原 CHG-NN.md 模板）+ .pi/commands/change.md + roles/risk-officer.md + ORCHESTRATOR.md/WORKFLOW.md；2026-09-28 首个需求已按此整理（CHG-01~05 合并为单文件台账） |
+| 环境配置口径 | 测试 / 预发 / 线上环境的配置（**properties 与 ducc 项**）统一在各环境 **JDOS 配置文件**中单独抽取维护；仓库内 `src/main/resources/*.properties` 仅作本地/默认兜底，**不是环境配置来源**。设计与部署文档写「配置放哪里」时应落到「JDOS 配置文件（按环境）」；评审**不得**因 `@LafValue` 是否带 `name`（命名空间写法）判缺陷——配置抽取方式由 JDOS 决定 | 2026-09-29 用户澄清（起因：误将 11 处未带 `name` 的 `@LafValue` 判为 ducc 落点缺陷）；落地：`DEPLOY-CONFIG.md` §0 + `07-cr-handoff.md` D-01 |
 
 ## 五、反模式（明确不想要的）
 

@@ -24,6 +24,7 @@
 | HC-12 | 2026-09-26 | REQ-20260922-jiabao-cash-coupon | 中间件参数配置：JSF/RPC 超时重试等参数在 spring-jsf-consumer.xml 等配置文件（properties 占位符）中配置，禁止代码里用 RpcContext/attachment 动态设置 | 已确认 2026-09-26（用户直接陈述即确认） |
 | HC-13 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 角色模型指定：架构师CR（/cr）统一使用 gpt-6-sol 模型（派发 Task 时显式指定 model） | 已确认 2026-09-28（用户直接指令） |
 | HC-14 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 配置分界判据修正（按变动概率）：业务初期不确定/需运行期调整的阈值一律 ducc（如券码数量上限、试算抵扣上限），稳定不变的（JSF 超时/租户 id/别名/sendpay 位次）才放 properties——修正 HC-05 中「上限/阈值一律 properties」的表述 | 已确认 2026-09-28（用户直接陈述即确认） |
+| HC-15 | 2026-09-29 | REQ-20260922-jiabao-cash-coupon | 环境配置口径：测试/预发/线上环境的配置（properties 与 ducc 项）统一在各环境 **JDOS 配置文件**中单独抽取维护，仓库 properties 仅本地/默认兜底；设计与部署文档的"配置放哪里"应落到 JDOS 配置文件（按环境）；不得因 `@LafValue` 未带 `name`（命名空间写法）判为缺陷 | 已确认 2026-09-29（用户直接陈述即确认） |
 
 ## 二、流程优化提案区（待审批）
 
@@ -59,6 +60,7 @@
 | EP-04 | 2026-09-28 | 流程优化：文档精简与单文件变更台账（changes/CHANGES.md 单文件，每次变更追加一节；阶段文档合并，档案控制在 10 个文档量级） | workflow/templates/CHANGES.md、.pi/commands/change.md、workflow/roles/risk-officer.md、workflow/ORCHESTRATOR.md、workflow/WORKFLOW.md、workflow/PROFILE.md |
 
 | EP-05 | 2026-09-29 | 流程优化：任何改动必须过架构师CR（含小修/加固/父 Agent 直接修改；允许聚焦增量 CR，不得以改动小为由跳过） | .pi/commands/cr.md、workflow/roles/cr-architect.md、workflow/ORCHESTRATOR.md、workflow/PROFILE.md |
+| HC-15 | 2026-09-29 | 习惯候选 HC-15 生效：环境配置口径=各环境（测试/预发/线上）配置在 JDOS 配置文件中单独抽取，仓库 properties 仅本地兜底；不因 `@LafValue` 命名空间写法判缺陷 | workflow/PROFILE.md 四、协作与流程偏好 |
 ## 四、复盘数据总览（跨需求趋势）
 
 > 每次 `/retro` 后追加一行，用于观察流程健康度趋势。
