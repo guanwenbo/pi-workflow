@@ -34,6 +34,7 @@
 | EP-02 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | CR 派发简报须写明判定纪律：只有导致功能错误/资损/数据不一致/幂等并发失效/违反架构硬性规则的才判 blocker 或 major；加固建议、更多测试、真实环境验证一律 minor 或登记为不阻塞项；用户已决策事项不得再判 blocker/major，只能记「接受风险 + 上线前置」。理由：本需求前 4 轮 CR 未写纪律导致标准逐步上移（每轮均出现「部分修复」），第 5 轮写明后一次收敛通过 | roles/cr-architect.md（检查清单/判定纪律）、.pi/commands/cr.md（任务简报要点） | 待审批 |
 | EP-03 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 方案评审门禁：任何方案产出（03-design.md 设计稿、changes/CHANGES.md 中的变更节）在进入开发前必须派发一次架构师评审（角色 cr-architect=架构师CR，模型 custom/gpt-6-sol），评审意见回写方案文件/变更节的「架构师评审意见」小节；不通过则先修订方案再复评（同一方案最多复评 2 轮，未收敛上报用户决策） | workflow/roles/cr-architect.md（新增方案评审职责与检查项）、workflow/roles/architect.md（产出后提交评审）、.pi/commands/design.md、.pi/commands/change.md、workflow/templates/03-design.md、workflow/templates/CHANGES.md、workflow/ORCHESTRATOR.md（门禁） | 已批准并落实 2026-09-28（用户直接指令） |
 | EP-04 | 2026-09-28 | REQ-20260922-jiabao-cash-coupon | 文档精简与单文件变更台账：每个需求**只保留一个变更文件** `changes/CHANGES.md`，每次变更**追加一节**（CHG-01 起自增），禁止每次变更新建 `CHG-NN.md`；阶段文档不重复堆叠（实施细则并入所属阶段文档，如派发简报并入 `05-tasks.md`），同一需求档案控制在 10 个文档量级 | workflow/templates/CHANGES.md（替代 CHG-NN.md）、.pi/commands/change.md、workflow/roles/risk-officer.md、workflow/ORCHESTRATOR.md、workflow/WORKFLOW.md、workflow/PROFILE.md | 已批准并落实 2026-09-28（用户直接指令："纳入 不过要整理一下 不要有过多的文档 每次的 changes 只有一个 不要搞 N 个"） |
+| EP-05 | 2026-09-29 | REQ-20260922-jiabao-cash-coupon | **任何改动必须过架构师CR**：需求内**所有**代码改动——含 /dev 常规任务产出、CR 修复、minor 加固、父 Agent 直接小修（哪怕 1 行）——在最终合入/进入下一阶段前都必须至少经过一轮架构师CR（model `custom/gpt-6-sol`）；未过 CR 的改动不得视为完成、不得推进状态、不得上线。允许"聚焦增量 CR"（只评审该增量 commit），但不得以"改动小"为由跳过 | .pi/commands/cr.md（前置校验+增量 CR 说明）、workflow/roles/cr-architect.md、workflow/ORCHESTRATOR.md（门禁）、workflow/PROFILE.md | 已批准并落实 2026-09-29（用户直接指令："任何改动都需要架构师 CR"） |
 
 ## 三、已生效变更日志
 
@@ -57,6 +58,7 @@
 | HC-14 | 2026-09-28 | 习惯候选 HC-14 生效：配置分界判据=变动概率（修正 HC-05 表述） | workflow/PROFILE.md 二、编码风格「配置化」行 |
 | EP-04 | 2026-09-28 | 流程优化：文档精简与单文件变更台账（changes/CHANGES.md 单文件，每次变更追加一节；阶段文档合并，档案控制在 10 个文档量级） | workflow/templates/CHANGES.md、.pi/commands/change.md、workflow/roles/risk-officer.md、workflow/ORCHESTRATOR.md、workflow/WORKFLOW.md、workflow/PROFILE.md |
 
+| EP-05 | 2026-09-29 | 流程优化：任何改动必须过架构师CR（含小修/加固/父 Agent 直接修改；允许聚焦增量 CR，不得以改动小为由跳过） | .pi/commands/cr.md、workflow/roles/cr-architect.md、workflow/ORCHESTRATOR.md、workflow/PROFILE.md |
 ## 四、复盘数据总览（跨需求趋势）
 
 > 每次 `/retro` 后追加一行，用于观察流程健康度趋势。

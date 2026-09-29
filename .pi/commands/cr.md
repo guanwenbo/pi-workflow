@@ -2,6 +2,8 @@
 description: 架构师 Agent CR：分级审查改动、循环修复直至无 blocker/major，并生成人工复验交接文档
 ---
 
+
+> **EP-05 门禁**：任何改动（含 CR 修复、minor 加固、父 Agent 直接小修）都必须过架构师CR 后才算完成；增量改动走**聚焦增量 CR**（评审范围限定为该增量 commit），流程与本命令相同。
 # /cr
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
@@ -12,6 +14,7 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
 2. 期望状态：`developing`（首次进入或被打回后重进）或 `cr-agent`/`cr-human`（CR 流程续跑）。
    - 若 status 为 `planned` 或更早，提示：「开发尚未完成，请先执行 /dev <需求编号>」，停止执行。
    - 若 status 为 `cr-confirmed`，提示：「CR 已通过人工确认，请先执行 /test-plan <需求编号>」，停止执行。
+   - **例外**：`cr-human`/`cr-confirmed` 状态下若出现**新的未过 CR 改动**（含父 Agent 直接小修、minor 加固补交），状态视为回到 `cr-agent`，必须派发**聚焦增量 CR**（只评审该增量 commit）并追加轮次后，方可回到 `cr-human`（EP-05：任何改动必须过架构师CR，不得以改动小为由跳过）。
    - 若 status 为 `testing` 或之后，提示：「需求已进入测试及之后阶段；如需改动，请先执行 /change <变更描述>」，停止执行。
 3. 校验 `05-tasks.md` 全部任务已勾选 `- [x]`；存在未完成任务时提示先执行 /dev 完成剩余任务。
 
