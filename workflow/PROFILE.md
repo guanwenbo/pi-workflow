@@ -60,6 +60,7 @@
 | 任何改动必须过架构师CR | 需求内**所有**代码改动（含 /dev 产出、CR 修复、minor 加固、父 Agent 直接小修）合入前必须至少过一轮架构师CR（`custom/gpt-6-sol`）；允许聚焦增量 CR（只评审该增量 commit），不得以"改动小"为由跳过；未过 CR 的改动不得视为完成/推进状态/上线 | 落实：EP-05 + .pi/commands/cr.md（增量 CR 说明）+ roles/cr-architect.md + ORCHESTRATOR.md |
 | 变更台账与文档精简 | **每个需求只保留一个变更文件**：`changes/CHANGES.md` 单文件台账，每次变更**追加一节**（CHG-01 起自增），**禁止**每次变更新建 `CHG-NN.md` 文件；阶段文档不重复堆叠（实施细则并入所属阶段文档，如派发简报并入 `05-tasks.md`），同一需求档案控制在 10 个文档量级 | 落实：templates/CHANGES.md（替换原 CHG-NN.md 模板）+ .pi/commands/change.md + roles/risk-officer.md + ORCHESTRATOR.md/WORKFLOW.md；2026-09-28 首个需求已按此整理（CHG-01~05 合并为单文件台账） |
 | 环境配置口径 | 测试 / 预发 / 线上环境的配置（**properties 与 ducc 项**）统一在各环境 **JDOS 配置文件**中单独抽取维护；仓库内 `src/main/resources/*.properties` 仅作本地/默认兜底，**不是环境配置来源**。设计与部署文档写「配置放哪里」时应落到「JDOS 配置文件（按环境）」；评审**不得**因 `@LafValue` 是否带 `name`（命名空间写法）判缺陷——配置抽取方式由 JDOS 决定 | 2026-09-29 用户澄清（起因：误将 11 处未带 `name` 的 `@LafValue` 判为 ducc 落点缺陷）；落地：`DEPLOY-CONFIG.md` §0 + `07-cr-handoff.md` D-01 |
+| 问题定位派发原则 | **bug/问题定位类任务（含派发架构师定位）的简报只给客观现象与已核实事实**（日志原文、操作步骤、环境状态、查询结果），**禁止夹带父 Agent 的主观猜测、方向预设或候选根因清单**；由子代理自行从证据出发定位，避免锚定效应导致误判 | 2026-10-07 用户明确（起因：冻卡流水缺失问题派发时简报预设了"锁获取失败"方向）；后续所有 bug 定位均按此原则 |
 
 ## 五、反模式（明确不想要的）
 

@@ -61,6 +61,7 @@
 
 | EP-05 | 2026-09-29 | 流程优化：任何改动必须过架构师CR（含小修/加固/父 Agent 直接修改；允许聚焦增量 CR，不得以改动小为由跳过） | .pi/commands/cr.md、workflow/roles/cr-architect.md、workflow/ORCHESTRATOR.md、workflow/PROFILE.md |
 | HC-15 | 2026-09-29 | 习惯候选 HC-15 生效：环境配置口径=各环境（测试/预发/线上）配置在 JDOS 配置文件中单独抽取，仓库 properties 仅本地兜底；不因 `@LafValue` 命名空间写法判缺陷 | workflow/PROFILE.md 四、协作与流程偏好 |
+| HC-16 | 2026-10-07 | 习惯候选 HC-16 生效：问题定位派发原则——bug 定位类任务简报只给客观现象与已核实事实，禁止夹带父 Agent 主观猜测/方向预设/候选根因，子代理自行从证据出发定位 | workflow/PROFILE.md 四、协作与流程偏好 |
 ## 四、复盘数据总览（跨需求趋势）
 
 > 每次 `/retro` 后追加一行，用于观察流程健康度趋势。
