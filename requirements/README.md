@@ -36,7 +36,7 @@
 主流程：
 
 ```
-draft → clarifying → clarified → designing → reviewed → planned
+draft → clarifying → clarified → designing → reviewed → confirmed → planned
       → developing → cr-agent → cr-human → cr-confirmed → testing
       → ready-release → released → archived
 ```

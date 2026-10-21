@@ -9,8 +9,9 @@ description: 任务拆解：派发计划工程师将设计稿拆为 WBS 任务�
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。
-2. 期望状态：`reviewed`（或 `planned`，表示重新拆解）。
+2. 期望状态：`confirmed`（或 `planned`，表示重新拆解）。
    - 若 status 为 `designing` 或更早，提示：「设计尚未评审通过，请先执行 /review <需求编号>」，停止执行。
+   - 若 status 为 `reviewed`，提示：「Agent 评审已通过但未经人工复审，请先在 /review <需求编号> 流程中确认方案与测试用例」，停止执行。
    - 若 status 为 `developing` 或之后，提示：「任务已进入开发（当前状态：<status>）；如需调整任务，请先执行 /change <变更描述>」，停止执行。
 3. 校验 `03-design.md` 存在；缺失时提示先执行 /design。
 

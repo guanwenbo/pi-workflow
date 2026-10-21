@@ -25,7 +25,7 @@ updated: 2026-09-21
 
 ## 状态变更日志
 
-<!-- 每次状态迁移追加一行；状态机：draft → clarifying → clarified → designing → reviewed → planned → developing → cr-agent → cr-human → cr-confirmed → testing → ready-release → released → archived；异常状态：blocked、change-requested。 -->
+<!-- 每次状态迁移追加一行；状态机：draft → clarifying → clarified → designing → reviewed → confirmed → planned → developing → cr-agent → cr-human → cr-confirmed → testing → ready-release → released → archived；异常状态：blocked、change-requested。 -->
 
 | 时间 | 从状态 | 到状态 | 操作人 | 备注 |
 | --- | --- | --- | --- | --- |

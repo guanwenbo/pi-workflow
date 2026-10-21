@@ -16,7 +16,7 @@
 ## 三、状态机
 
 ```
-draft → clarifying → clarified → designing → reviewed → planned
+draft → clarifying → clarified → designing → reviewed → confirmed → planned
 → developing → cr-agent → cr-human → cr-confirmed
 → testing → ready-release → released → archived
 
@@ -30,12 +30,12 @@ change-requested：变更流程，审批通过后回流到对应阶段
 |---|---|---|---|
 | `/req-new <需求名>` | 需求承接 | 父 Agent 自执行 | 00-meta.md、01-intake.md |
 | `/req-clarify` | 需求澄清 | 需求分析师 | 02-clarification.md（边界+AC） |
-| `/design` | 方案设计 | 架构设计师 | 03-design.md（DDD+三层映射） |
-| `/review` | 评审 | 评审员 | 04-review.md |
+| `/design` | 方案设计（含测试计划） | 架构设计师 + 测试工程师 | 03-design.md（DDD+三层映射）、08-test-plan.md |
+| `/review` | 评审 + 人工复审 | 评审员 | 04-review.md；人工确认 → confirmed |
 | `/breakdown` | 任务拆解 | 计划工程师 | 05-tasks.md（WBS） |
 | `/dev` | 开发 | 开发工程师 | 代码 + 任务勾选 |
 | `/cr` | Agent CR + 人工复验 | 架构师CR | 06-cr-report.md、07-cr-handoff.md |
-| `/test-plan` | 测试计划 | 测试工程师 | 08-test-plan.md |
+| `/test-plan` | 测试执行与回归 | 测试工程师 | 用例执行结果回填 + 补充用例 |
 | `/pre-release` | 上线检查 | 发布工程师 | 09-release.md |
 | `/risk` | 风险管控（任意阶段） | 风险官 | 10-risks.md |
 | `/change <描述>` | 变更管理（任意阶段） | 风险官 | changes/CHANGES.md |
@@ -44,9 +44,10 @@ change-requested：变更流程，审批通过后回流到对应阶段
 ## 五、标准流程
 
 ```
-/req-new → /req-clarify → /design → /review → /breakdown
-→ /dev → /cr（循环至无 blocker/major → 人工复验）
-→ /test-plan → /pre-release → 发布 → /retro
+/req-new → /req-clarify → /design（方案设计 + 测试计划同步产出）
+→ /review（Agent 评审设计+用例 → 人工复审确认）→ /breakdown
+→ /dev（参考测试用例边界场景）→ /cr（CR 循环 → 编译验证 → 人工复验）
+→ /test-plan（执行用例与回归）→ /pre-release → 发布 → /retro
 
 /risk、/change 贯穿全程，任意阶段可执行
 ```
@@ -59,7 +60,8 @@ change-requested：变更流程，审批通过后回流到对应阶段
 2. 提交信息强制带需求编号：`REQ-xxx: <描述>`
 3. CR 循环：直到一整轮无 blocker/major 才出 CR 报告结论，随后必须生成人工复验交接文档
 4. 人工复验是硬门禁：`cr-human` → `cr-confirmed` 必须由用户明确确认
-5. 架构红线：见 [ARCHITECTURE.md](./ARCHITECTURE.md)，三条硬规则违反即 blocker
+5. 人工复审是硬门禁：`reviewed` → `confirmed` 必须由用户确认方案与测试用例后才能拆解
+6. 架构红线：见 [ARCHITECTURE.md](./ARCHITECTURE.md)，三条硬规则违反即 blocker
 
 ## 七、文件地图
 

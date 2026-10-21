@@ -19,7 +19,7 @@
 ## 三、状态机
 
 ```
-draft → clarifying → clarified → designing → reviewed → planned
+draft → clarifying → clarified → designing → reviewed → confirmed → planned
 → developing → cr-agent → cr-human → cr-confirmed
 → testing → ready-release → released → archived
 ```
@@ -33,12 +33,12 @@ draft → clarifying → clarified → designing → reviewed → planned
 |---|---|---|
 | `/req-new` | （无） | `draft` |
 | `/req-clarify` | `draft` / `clarifying` | `clarified` |
-| `/design` | `clarified` | `designing`（方案产出后须先过**架构师方案评审**，再进 `/review`） |
-| `/review` | `designing`（03-design.md 已产出） | `reviewed` |
-| `/breakdown` | `reviewed` | `planned` |
+| `/design` | `clarified` | `designing`（产出 03-design + 08-test-plan；方案产出后须先过**架构师方案评审**，再进 `/review`） |
+| `/review` | `designing`（03-design 与 08-test-plan 已产出） | `reviewed` →（人工复审）→ `confirmed` |
+| `/breakdown` | `confirmed` | `planned` |
 | `/dev` | `planned` | `developing` |
 | `/cr` | `developing` | `cr-agent` → `cr-human` → `cr-confirmed` |
-| `/test-plan` | `cr-confirmed` | `testing` |
+| `/test-plan` | `cr-confirmed` | `testing`（执行用例与回归） |
 | `/pre-release` | `testing` | `ready-release`（前置：自测全部完成后须先**回流设计文档补齐出入**并过**一致性 CR**，EP-06） |
 | `/risk` | 任意 | 不改变状态 |
 | `/change` | 任意 | `change-requested`（变更单产出后须先过**架构师方案评审**，再交用户审批） |

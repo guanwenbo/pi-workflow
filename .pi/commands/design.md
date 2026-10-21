@@ -1,5 +1,5 @@
 ---
-description: 方案设计：派发架构设计师产出 DDD 领域模型与三层架构设计稿
+description: 方案设计：派发架构设计师产出 DDD 设计稿，并同步派发测试工程师产出测试计划（供开发参考边界场景）
 ---
 
 # /design
@@ -43,10 +43,17 @@ description: 方案设计：派发架构设计师产出 DDD 领域模型与三�
    - 业务逻辑只能写在业务层；API层只做入参校验+防腐+参数转化；外部依赖层只做参数转化+防腐且绝对无业务逻辑
    - 下层不做冗余参数校验
    - 详见 `workflow/ARCHITECTURE.md`
+6. 设计稿完成后，**同步派发测试工程师**（任务简报）：
+   - 角色：测试工程师
+   - 任务：基于设计稿与验收标准产出测试计划，供开发阶段参考边界场景
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、刚产出的 `03-design.md`、`workflow/PROFILE.md`、`workflow/templates/08-test-plan.md`
+   - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`
+   - 返回格式：≤200 字摘要
+7. `08-test-plan.md` 要求：每条 AC 至少 1 条用例（用例编号 TC-001…，字段：编号/类型[正常|边界|异常|回归]/前置条件/步骤/预期/关联 AC）；**边界与异常用例必须对照设计稿的「边界定义」「分布式设计」章节推导**；末尾附 AC 覆盖矩阵，存在未覆盖 AC 必须补齐。
 
 ## 产出与状态流转
 
-- 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`
-- 状态流转：进入设计时置 `designing`；设计稿完成后**先派发架构师方案评审（EP-03 门禁）**，评审通过后保持 `designing`，等待 `/review`；未通过则修订设计稿后复评（同一方案最多复评 2 轮，未收敛上报用户决策）。
-- 更新 `SUMMARY.md`：追加「设计阶段」摘要（≤5 行），含限界上下文清单、三层映射要点、待决策项。
+- 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md` + `requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`
+- 状态流转：进入设计时置 `designing`；设计稿与测试计划完成后**先派发架构师方案评审（EP-03 门禁）**，评审通过后保持 `designing`，等待 `/review`；未通过则修订后复评（同一方案最多复评 2 轮，未收敛上报用户决策）。
+- 更新 `SUMMARY.md`：追加「设计阶段」摘要（≤5 行），含限界上下文清单、三层映射要点、用例总数与 AC 覆盖率、待决策项。
 - 提示用户下一步执行 `/review <需求编号>`。
