@@ -25,7 +25,7 @@ description: 方案设计：派发架构设计师产出 DDD 设计稿，并同�
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 4. **架构师方案评审（门禁，EP-03）**：设计稿产出后，派发 Task 子代理做**方案评审**：
-   - 角色：架构师CR（cr-architect）；模型：`custom/gpt-6-sol`（首选）→ 不可用时回退 `custom/gpt-6-astra`（HC-13 强制显式指定，禁止用默认模型）
+   - 角色：架构师CR（cr-architect）；模型：**`custom/GPT-6-Sol-joybuilder`（首选，provider=oxygen-gpt）→ 回退 `custom/GPT-6-Astra-joybuilder`**（HC-13 强制显式指定，禁止用默认模型；前置：oxygen-gpt 的 api_style 必须为 `responses`，否则 GPT-6 系带 tools 会 400）
    - 任务：对 `03-design.md` 做架构级方案评审（评审对象是方案，不是代码）；评审意见**追加到 `03-design.md` 末尾「架构师评审意见」章节**
    - 简报必须写明判定纪律：只有功能错误/资损/数据不一致/幂等并发失效/违反架构硬性规则判 blocker|major；用户已决策事项不得判 blocker|major，只能记「接受风险 + 上线前置条件」
    - 不通过 → 按问题清单修订设计稿后复评（同一方案最多复评 2 轮，未收敛上报用户决策）；**通过后才可提示用户执行 `/review`**
