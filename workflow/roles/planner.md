@@ -31,5 +31,10 @@
 - 任务简报中列出的白名单文件
 - workflow/templates/05-tasks.md 模板
 
+## 模型约定
+- 本角色统一使用模型 **`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（provider：oxygen-deepseek，显示名 DeepSeek-V4.1-Flash-A）
+- 父 Agent 派发 `/breakdown` 任务时必须显式带该 model；不得使用默认模型，也不得与智增增的 `custom/deepseek-v4.1-flash` 混用
+- 见 `workflow/PROFILE.md`「计划工程师模型指定」条
+
 ## 返回格式
 ≤200 字：任务总数/总工时/关键路径概述 + 产出文件路径 + 待决策事项（如有）。

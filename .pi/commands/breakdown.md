@@ -19,6 +19,7 @@ description: 任务拆解：派发计划工程师将设计稿拆为 WBS 任务�
 
 1. 派发 Task 子代理，任务简报：
    - 角色：计划工程师
+   - **模型：`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（oxygen-deepseek；HC-13 强制显式指定，不得用默认模型）
    - 任务：将评审通过的设计稿拆解为可执行的 WBS 任务表
    - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/04-review.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/05-tasks.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`
