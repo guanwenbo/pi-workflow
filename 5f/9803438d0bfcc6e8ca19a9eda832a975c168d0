@@ -1,0 +1,14 @@
+workflow/PROFILE.md
+  h_b98c004121ae66 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5f9803438d0bfcc6e8ca19a9eda832a975c168d0",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
