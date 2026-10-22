@@ -1,0 +1,18 @@
+.pi/commands/dev.md
+  h_b98c004121ae66 23-24
+workflow/PROFILE.md
+  h_b98c004121ae66 62
+workflow/roles/developer.md
+  h_b98c004121ae66 49-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2cc5425a86ffc36c59537bbea1b9c95ddd30a519",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
