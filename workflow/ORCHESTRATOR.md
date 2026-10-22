@@ -45,9 +45,9 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 | `/retro` | `released` | `archived` |
 
 **门禁执行**：命令开头先读 `00-meta.md` 校验状态，不满足时明确提示「请先执行 /xxx」，禁止静默跳过。
-- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/gpt-6-sol`），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
+- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/gpt-6-sol`（首选；不可用时回退 `custom/gpt-6-astra`）），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 
-- **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR，模型 `custom/gpt-6-sol`），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。
+- **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR，模型 `custom/gpt-6-sol`（首选；不可用时回退 `custom/gpt-6-astra`）），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。
 
 ## 五、派发协议（父 → 子）
 

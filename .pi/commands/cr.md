@@ -35,6 +35,7 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
 1. 父 Agent 更新 `00-meta.md`：`status: cr-agent`，更新 `updated`。
 2. 派发 Task 子代理，任务简报：
    - 角色：架构师CR
+   - **模型：`custom/gpt-6-sol`（首选）→ 不可用时回退 `custom/gpt-6-astra`**（强制显式指定，禁止用默认模型；回退时须在 06-cr-report.md 注明实际模型）
    - 任务：对照设计稿与架构约束，审查本需求全部代码改动（git diff / 提交记录）
    - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/06-cr-report.md`、`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、改动涉及的源码
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/06-cr-report.md`（**每轮追加，不覆盖**，标注「第 N 轮」）
