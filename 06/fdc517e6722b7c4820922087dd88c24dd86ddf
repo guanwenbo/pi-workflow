@@ -1,0 +1,20 @@
+.pi/commands/cr.md
+  h_b98c004121ae66 38
+.pi/commands/design.md
+  h_b98c004121ae66 28
+workflow/ORCHESTRATOR.md
+  h_b98c004121ae66 48,50
+workflow/PROFILE.md
+  h_b98c004121ae66 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "06fdc517e6722b7c4820922087dd88c24dd86ddf",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
