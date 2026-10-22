@@ -20,6 +20,8 @@ description: 开发实现：派发开发工程师按 WBS 逐项实现并更新�
 1. 父 Agent 更新 `00-meta.md`：`status: developing`，更新 `updated`。
 2. 按 `05-tasks.md` 的依赖顺序逐项派发 Task 子代理（同一批无依赖的任务可并行派发，但每个子代理独立上下文）：
    - 角色：开发工程师
+   - **模型：`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（oxygen-deepseek；强制显式指定，不得用默认模型）
+   - **任务开发一律派 sub agent 执行，父 Agent 不直接写代码**
    - 任务：实现指定任务（明确任务编号范围，如 T-01 ~ T-03）
    - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、相关源码目录
    - 产出文件：源码改动 + 更新 `05-tasks.md` 对应任务勾选状态

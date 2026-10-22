@@ -46,5 +46,11 @@
 - workflow/ARCHITECTURE.md（架构宪法）
 - requirements/REQ-YYYYMMDD-<slug>/03-design.md 的三层映射表
 
+## 模型约定
+- 本角色统一使用模型 **`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（provider：oxygen-deepseek，显示名 DeepSeek-V4.1-Flash-A）
+- 父 Agent 派发 `/dev` 任务时必须显式带该 model；**任务开发一律派 sub agent 执行，父 Agent 不直接写代码**
+- 不得使用默认模型，也不得与智增增的 `custom/deepseek-v4.1-flash` 混用
+- 见 `workflow/PROFILE.md`「开发工程师模型指定」条
+
 ## 返回格式
 ≤200 字：完成/修复的任务编号清单 + 代码改动范围 + 待决策事项（如有）。
