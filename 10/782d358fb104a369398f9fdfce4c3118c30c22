@@ -1,0 +1,14 @@
+workflow/EVOLUTION.md
+  h_b98c004121ae66 41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "10782d358fb104a369398f9fdfce4c3118c30c22",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
