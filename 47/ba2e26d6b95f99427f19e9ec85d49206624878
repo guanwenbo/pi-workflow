@@ -1,0 +1,34 @@
+.pi/commands/cr.md
+  h_b98c004121ae66 26,44
+.pi/commands/design.md
+  h_b98c004121ae66 32-40
+.pi/commands/dev.md
+  h_b98c004121ae66 29
+requirements/README.md
+  h_b98c004121ae66 23
+workflow/ARCHITECTURE.md
+  h_b98c004121ae66 12,50-51,77
+workflow/roles/architect.md
+  h_b98c004121ae66 9,37-38
+workflow/roles/cr-architect.md
+  h_b98c004121ae66 17,40,103
+workflow/roles/developer.md
+  h_b98c004121ae66 31,47
+workflow/roles/reviewer.md
+  h_b98c004121ae66 23
+workflow/templates/03-design.md
+  h_b98c004121ae66 3-9,11,13,15,17-18,20,22-25,27,29,31-34,36,38,40-43,45,47,49-57,59,61,63-74,77-82,85,87,89,91,93,95-97,100-101,104,106-108,110,112,114,116-123,125,127-138,140,142-146,148,150,152-175,177-189,191,193,195,197,199,201,203-205,207,209,211-215,217,219,221
+workflow/templates/05-tasks.md
+  h_b98c004121ae66 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "47ba2e26d6b95f99427f19e9ec85d49206624878",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
