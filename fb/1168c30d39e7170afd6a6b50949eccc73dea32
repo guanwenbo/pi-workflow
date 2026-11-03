@@ -1,0 +1,24 @@
+.pi/commands/req-new.md
+  h_b98c004121ae66 20-23,26-27
+plugin/pi-workflow-gates/README.md
+  h_b98c004121ae66 1-27
+plugin/pi-workflow-gates/main.js
+  h_b98c004121ae66 1-308
+plugin/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 1-90
+workflow/ORCHESTRATOR.md
+  h_b98c004121ae66 48
+workflow/WORKFLOW.md
+  h_b98c004121ae66 69,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fb1168c30d39e7170afd6a6b50949eccc73dea32",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
