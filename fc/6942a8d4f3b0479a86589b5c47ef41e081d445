@@ -1,0 +1,14 @@
+workflow/ORCHESTRATOR.md
+  h_b98c004121ae66 18,90-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fc6942a8d4f3b0479a86589b5c47ef41e081d445",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
