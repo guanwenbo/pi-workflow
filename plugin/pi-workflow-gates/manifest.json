@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "id": "gwb.pi-workflow-gates",
+  "name": "PI-Workflow Gates",
+  "version": "0.1.0",
+  "description": "pi-workflow 机械层门禁：需求建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本计数（metrics_record）。门禁由代码物理执行，不依赖 AI 自觉。",
+  "main": "main.js",
+  "safetyNotes": "只在当前打开的工作区内读写 requirements/ 目录（需求档案），读取 workflow/ 下的模板。不写代码文件，不删任何文件，不访问网络。",
+  "contributes": {
+    "agentTools": [
+      {
+        "name": "req_init",
+        "description": "创建需求档案：生成编号 REQ-YYYYMMDD-<slug>、创建 requirements/<编号>/ 目录并从 workflow/templates 拷贝 00-meta/01-intake/SUMMARY 模板（frontmatter 填好 id/title/status=draft/日期）。目录已存在则拒绝。/req-new 必须调用本工具建档，不得手工创建。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string", "description": "需求标题（中文）" },
+            "slug": { "type": "string", "description": "需求英文 slug，小写字母数字与连字符，如 order-timeout" },
+            "owner": { "type": "string", "description": "负责人，缺省为「待填写」" },
+            "priority": { "type": "string", "description": "优先级 P0-P3，缺省 P2" }
+          },
+          "required": ["title", "slug"]
+        }
+      },
+      {
+        "name": "state_check",
+        "description": "阶段门禁校验（物理拦截）：读取 requirements/<reqId>/00-meta.md 的 status，校验是否满足指定命令的前置状态。返回 ok=false 时附 hint（应提示用户的「请先执行 /xxx」话术）。任何命令执行前必须先调本工具，ok=false 时禁止继续。",
+        "risk": "low",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号 REQ-YYYYMMDD-<slug>" },
+            "command": { "type": "string", "description": "命令名，如 design / review / breakdown / dev / cr / test-plan / pre-release / retro" }
+          },
+          "required": ["reqId", "command"]
+        }
+      },
+      {
+        "name": "state_transition",
+        "description": "状态流转：校验流转合法性（按状态机邻接表），合法则更新 00-meta.md 的 status/updated 并向「状态变更日志」表追加一行（时间/从状态/到状态/agent/备注）。非法流转直接拒绝并返回允许的目标状态列表。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "to": { "type": "string", "description": "目标状态，如 clarified/designing/reviewed/confirmed/planned/developing/cr-agent/cr-human/cr-confirmed/testing/ready-release/released/archived/blocked/change-requested" },
+            "note": { "type": "string", "description": "备注（如「人工复审通过」「打回：xxx」）；blocked/change-requested 必填原因" }
+          },
+          "required": ["reqId", "to"]
+        }
+      },
+      {
+        "name": "metrics_record",
+        "description": "EP-07 账本计数：更新 00-meta.md 过程指标表。cr_round=CR 轮次 +1（备注自动写 N = N-1 + 1 可核算式）；rework=返工次数 +1；human_reject=人工打回原因追加一条（含日期）。禁止手工改这些数值。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "kind": { "type": "string", "enum": ["cr_round", "rework", "human_reject"], "description": "计数类型" },
+            "note": { "type": "string", "description": "备注；human_reject 必填打回原因，rework 建议填阶段" }
+          },
+          "required": ["reqId", "kind"]
+        }
+      }
+    ]
+  },
+  "permissions": [
+    "agent.tool.register",
+    "fs.read",
+    "fs.write"
+  ],
+  "fs": {
+    "read": {
+      "root": "workspace",
+      "scope": ["requirements/**", "workflow/**"]
+    },
+    "write": {
+      "root": "workspace",
+      "scope": ["requirements/**"]
+    }
+  },
+  "engines": {
+    "piDesktop": ">=0.9.0"
+  },
+  "activationEvents": [
+    "onStartup"
+  ]
+}

@@ -17,18 +17,14 @@ description: 承接新需求：生成需求编号、创建需求档案目录与�
 
 本命令由父 Agent（需求管家）自己执行，**不派发任何角色 Agent**。
 
+**插件可用时（首选）**：调用插件工具 `plugin_gwb_pi_workflow_gates_req_init`（参数：title=需求名，slug=需求名小写连字符，owner/priority 已知则填），工具自动完成编号生成、目录创建、模板拷贝与 frontmatter 填写；返回 ok=false 或报错（如目录已存在）时停止执行并提示用户。**禁止手工创建档案目录与文件。**
+
+插件不可用时的手工兜底：
+
 1. 生成需求编号：`REQ-YYYYMMDD-<slug>`，其中 YYYYMMDD 为当天日期，slug 为需求名（小写、连字符）。
 2. 创建需求档案目录：`requirements/REQ-YYYYMMDD-<slug>/`，并创建空目录 `changes/`。
-3. 按模板 `workflow/templates/00-meta.md` 生成 `00-meta.md`，frontmatter 填写：
-   - `id`：REQ-YYYYMMDD-<slug>
-   - `title`：需求名
-   - `status`：draft
-   - `priority`：留空待用户填写
-   - `owner`：留空待用户填写
-   - `created`：当天日期
-   - `updated`：当天日期
-   - `metrics`：`耗时`、`返工次数`、`CR轮次`、`人工打回原因` 均初始化为 0 / 空
-4. 按模板 `workflow/templates/01-intake.md` 生成 `01-intake.md`，包含以下小节：**背景、干系人、商业价值、优先级、期望交付时间**。已知内容填入，未知字段明确标注「待用户填写」，不得编造。
+3. 按模板 `workflow/templates/00-meta.md` 生成 `00-meta.md`，frontmatter 填写：id、title、status=draft、priority/owner 留空待用户填写、created/updated 为当天日期。
+4. 按模板 `workflow/templates/01-intake.md` 生成 `01-intake.md`，未知字段标注「待用户填写」，不得编造。
 5. 按模板 `workflow/templates/SUMMARY.md` 生成 `SUMMARY.md`，写入首条摘要（≤5 行）：需求编号、需求名、创建时间、当前阶段 intake。
 
 ## 产出与状态流转

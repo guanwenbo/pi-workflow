@@ -67,6 +67,7 @@ change-requested：变更流程，审批通过后回流到对应阶段
 ## 七、文件地图
 
 ```
+```
 .pi/commands/          12 个命令定义
 workflow/
   WORKFLOW.md          本文档
@@ -77,4 +78,5 @@ workflow/
   roles/               10 个角色定义
   templates/           14 个阶段文档模板
 requirements/          需求档案存放区
+plugin/pi-workflow-gates/  机械层门禁插件（建档/状态机/账本，代码物理执行）
 ```
