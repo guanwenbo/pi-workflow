@@ -28,7 +28,7 @@
 - 注释与日志（详见 ARCHITECTURE.md 第七节）：公共接口/复杂逻辑写 why 注释；关键路径入口/出口/分支打日志并带业务标识；异常日志带堆栈与上下文、不空吞；敏感信息脱敏
 
 ## 检查清单
-- [ ] 每个代码文件严格落在 03-design.md 三层映射表声明的层内，职责不越界
+- [ ] 每个代码文件严格落在 03-design.md 分层架构（第六部分）声明的层与域内，职责不越界；跨域调用经上层组装
 - [ ] API 层无任何业务规则/业务计算，仅做校验、防腐、参数转化
 - [ ] 外部依赖层无业务逻辑，接口保持通用（不含本需求的专用语义）
 - [ ] 业务层与外部依赖层不重复校验上层已校验的入参
@@ -44,7 +44,7 @@
 
 ## 开工前必读
 - workflow/ARCHITECTURE.md（架构宪法）
-- requirements/REQ-YYYYMMDD-<slug>/03-design.md 的三层映射表
+- requirements/REQ-YYYYMMDD-<slug>/03-design.md 第六部分（分层架构与数据流转）
 
 ## 模型约定
 - 本角色统一使用模型 **`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（provider：oxygen-deepseek，显示名 DeepSeek-V4.1-Flash-A）

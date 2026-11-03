@@ -20,7 +20,7 @@
 | SUMMARY.md | 按阶段分节的累计摘要（每节 ≤5 行），用于快速恢复上下文 | 全生命周期 | workflow/templates/summary.md |
 | 01-intake.md | 需求承接：背景、业务价值、干系人、优先级 | draft | workflow/templates/01-intake.md |
 | 02-clarification.md | 澄清：问题清单、需求边界、验收标准 AC、异常场景 | clarifying → clarified | workflow/templates/02-clarification.md |
-| 03-design.md | 技术设计：技术选型、领域模型、三层模块划分、数据模型、接口契约 | designing | workflow/templates/03-design.md |
+| 03-design.md | 技术设计七部分：需求背景/业务流程/领域划分/实体设计/数据建模/落地实现/边界场景 | designing | workflow/templates/03-design.md |
 | 04-review.md | 设计评审：Checklist、决议项、修改要求、评审结论 | reviewed | workflow/templates/04-review.md |
 | 05-tasks.md | 任务拆解：WBS 任务表、里程碑 | planned | workflow/templates/05-tasks.md |
 | 06-cr-report.md | Agent 自审 CR 报告（按轮次） | cr-agent | workflow/templates/06-cr-report.md |
