@@ -1,0 +1,14 @@
+plugin/pi-workflow-gates/renderer/index.html
+  h_b98c004121ae66 1-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e951e14c6ad7a2b1f23afef69e6946013d91252b",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
