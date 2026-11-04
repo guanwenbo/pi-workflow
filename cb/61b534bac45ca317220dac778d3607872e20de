@@ -1,0 +1,14 @@
+plugin/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 217-218,239-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cb61b534bac45ca317220dac778d3607872e20de",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
