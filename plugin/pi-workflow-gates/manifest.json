@@ -214,7 +214,8 @@
   "permissions": [
     "agent.tool.register",
     "fs.read",
-    "fs.write"
+    "fs.write",
+    "ui.panel"
   ],
   "fs": {
     "read": {
@@ -235,5 +236,12 @@
   },
   "activationEvents": [
     "onStartup"
-  ]
+  ],
+  "ui": {
+    "panel": "renderer/index.html",
+    "title": {
+      "en": "PI-Workflow Dashboard",
+      "zh-CN": "PI-Workflow 需求看板"
+    }
+  }
 }
