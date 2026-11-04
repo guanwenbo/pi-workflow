@@ -98,9 +98,11 @@
   }
 
   function parseMetric(content, name) {
-    const re = new RegExp("^\\|\\s*" + name + "\\s*\\|([^|]*)\\|");
-    const m = content.match(re);
-    return m ? m[1].trim() : "-";
+    const line = content.split("\n").find(l => l.trim().startsWith("|") && l.includes(name));
+    if (!line) return "-";
+    const cols = line.split("|").map(c => c.trim()).filter(c => c !== "");
+    const i = cols.findIndex(c => c === name);
+    return i >= 0 && cols[i + 1] !== undefined ? cols[i + 1] : "-";
   }
 
   function parseStatusLog(content) {
