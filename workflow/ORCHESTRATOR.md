@@ -45,7 +45,7 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 | `/change` | 任意 | `change-requested`（变更单产出后须先过**架构师方案评审**，再交用户审批） |
 | `/retro` | `released` | `archived` |
 
-**门禁执行（插件物理化，gwb.pi-workflow-gates v0.1.0+ 可用时强制）**：插件工具 `plugin_gwb_pi_workflow_gates_*` 存在时——建档必须调 `req_init`；每条命令执行前必须调 `state_check`（ok=false 即停止并提示 hint）；任何状态变更必须调 `state_transition`（非法流转会被物理拒绝）；`metrics` 的 CR 轮次/返工次数/人工打回原因必须调 `metrics_record`。**禁止手工编辑 `00-meta.md` 的 status 与 metrics 数值**。插件不可用（工具不存在）时才允许按门禁表手工校验，且须在返回中声明「插件缺失，走手工兜底」。
+**门禁执行（插件物理化，gwb.pi-workflow-gates v0.2.0+ 可用时强制）**：插件工具 `plugin_gwb_pi_workflow_gates_*` 存在时——建档必须调 `req_init`；每条命令执行前必须调 `state_check`（ok=false 即停止并提示 hint）；任何状态变更必须调 `state_transition`（非法流转会被物理拒绝）；`metrics` 的 CR 轮次/返工次数/人工打回原因必须调 `metrics_record`；依赖扫描必须调 `layer_scan`（增量场景传改动文件清单，SPI 豁免/域划分经参数传入）；变更编号必须调 `chg_next`。**禁止手工编辑 `00-meta.md` 的 status 与 metrics 数值**。插件不可用（工具不存在）时才允许按门禁表手工校验，且须在返回中声明「插件缺失，走手工兜底」。
 - **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 
 - **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。

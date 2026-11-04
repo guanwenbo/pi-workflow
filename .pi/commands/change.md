@@ -15,7 +15,7 @@ description: 变更管理：创建变更单、评估影响，审批后回流受�
 
 ## 执行流程
 
-1. 确定本次变更编号：读取 `requirements/REQ-YYYYMMDD-<slug>/changes/CHANGES.md`（**单文件变更台账**；不存在则按模板创建），取已有最大 `CHG-NN` 编号自增（首个为 `CHG-01`）。**不新建文件**。
+1. 确定本次变更编号：**插件可用时调用 `plugin_gwb_pi_workflow_gates_chg_next` 获取下一个编号（禁止手数）**；插件不可用时读取 `requirements/REQ-YYYYMMDD-<slug>/changes/CHANGES.md`（**单文件变更台账**；不存在则按模板创建），取已有最大 `CHG-NN` 编号自增（首个为 `CHG-01`）。**不新建文件**。
 2. 派发 Task 子代理，任务简报：
    - 角色：风险官
    - 任务：创建变更单，完成影响分析

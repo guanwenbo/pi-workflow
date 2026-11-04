@@ -203,6 +203,143 @@ async function stateTransition(args) {
   return { ok: true, reqId, from, to, updated: today() };
 }
 
+// ---------- layer_scan：分层与域间依赖物理扫描（Java） ----------
+
+const SKIP_DIRS = new Set([".git", "target", "node_modules", "dist", "build", ".idea", ".workflow-core"]);
+
+async function walkJava(dir, acc) {
+  let entries;
+  try { entries = await pi.fs.list(dir); } catch { return acc; }
+  for (const e of entries) {
+    if (e.isDirectory) {
+      if (!SKIP_DIRS.has(e.name)) await walkJava(e.path, acc);
+    } else if (e.name.endsWith(".java")) {
+      acc.push(e.path);
+    }
+  }
+  return acc;
+}
+
+function parseJava(content) {
+  const pkg = (content.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1] || "";
+  const cls = (content.match(/^\s*public\s+(?:final\s+|abstract\s+)?(?:class|interface|enum|record)\s+(\w+)/m)
+    || content.match(/^\s*(?:class|interface|enum|record)\s+(\w+)/m) || [])[1] || "";
+  const imports = [];
+  const re = /^\s*import\s+(?:static\s+)?([\w.]+)\s*;/gm;
+  let m;
+  while ((m = re.exec(content)) !== null) imports.push(m[1]);
+  return { pkg, cls, imports };
+}
+
+async function layerScan(args) {
+  const { basePackage, layers, domains, assembly, files, srcPath } = args || {};
+  if (!basePackage || !Array.isArray(layers) || layers.length < 2) {
+    throw new Error("缺少必填参数：basePackage / layers（至少两层，按调用顺序从上到下）");
+  }
+  const layerRegex = layers.map(l => ({ name: l.name, res: l.patterns.map(p => new RegExp(p)) }));
+  const layerOf = pkg => {
+    const s = pkg.endsWith(".") ? pkg : pkg + "."; // 补尾点：让「.dao.」类正则也能命中末尾段
+    for (const l of layerRegex) if (l.res.some(r => r.test(s))) return l.name;
+    return null;
+  };
+  const domainOf = fqn => {
+    if (!domains) return null;
+    for (const [name, prefix] of Object.entries(domains)) if (fqn.startsWith(prefix)) return name;
+    return null;
+  };
+  const isAssembly = pkg => (assembly || []).some(p => pkg.startsWith(p));
+
+  // 收集文件（全量或增量）；默认排除测试代码（src/test/ 不受分层门禁约束，可用 includeTests 放开）
+  const rawFiles = Array.isArray(files) && files.length
+    ? files.filter(f => f.endsWith(".java"))
+    : await walkJava(srcPath || ".", []);
+  const javaFiles = args.includeTests ? rawFiles : rawFiles.filter(f => !/\/src\/test\//.test("/" + f));
+
+  // 解析 + 建立 FQN → 文件映射
+  const units = [];
+  for (const path of javaFiles) {
+    let content;
+    try { content = await pi.fs.readText(path); } catch { continue; }
+    const { pkg, cls, imports } = parseJava(content);
+    units.push({ path, pkg, cls, fqn: pkg && cls ? `${pkg}.${cls}` : null, imports });
+  }
+  const fqnToFile = new Map(units.filter(u => u.fqn).map(u => [u.fqn, u.path]));
+
+  const violations = [];
+  const layerIdx = name => layers.findIndex(l => l.name === name);
+
+  const allowRes = (args.allow || []).map(p => new RegExp(p)); // 豁免：如接口定义放在业务层、实现在外部依赖层的 SPI 模式
+  for (const u of units) {
+    const srcLayer = layerOf(u.pkg);
+    const srcDomain = domainOf(u.pkg);
+    for (const imp of u.imports) {
+      if (!imp.startsWith(basePackage)) continue; // 只看项目内部依赖
+      if (allowRes.some(r => r.test(imp))) continue; // 豁免规则（如 SPI 接口）
+      // ① 分层方向：只允许上层调下层（layers 数组索引小=上层）
+      if (srcLayer) {
+        const targetPkg = imp.replace(/\.[A-Z]\w*$/, ""); // 去掉类名
+        const dstLayer = layerOf(imp) || layerOf(targetPkg);
+        if (dstLayer && layerIdx(dstLayer) < layerIdx(srcLayer)) {
+          violations.push({ rule: "layer-reverse", level: "blocker", file: u.path, detail: `${u.pkg}（${srcLayer}层）依赖 ${imp}（${dstLayer}层）：下层不允许调上层/逆向依赖` });
+        }
+      }
+      // ② 域间直接调用：跨域必须经组装层
+      if (srcDomain) {
+        const dstDomain = domainOf(imp);
+        if (dstDomain && dstDomain !== srcDomain && !isAssembly(u.pkg)) {
+          violations.push({ rule: "domain-cross", level: "blocker", file: u.path, detail: `${u.pkg}（${srcDomain}域）直接依赖 ${imp}（${dstDomain}域）：跨域调用必须经上层组装` });
+        }
+      }
+    }
+  }
+
+  // ③ 类级循环依赖（项目内 FQN 图，DFS 找环）
+  const graph = new Map();
+  for (const u of units) {
+    if (!u.fqn) continue;
+    const edges = u.imports.filter(i => fqnToFile.has(i));
+    graph.set(u.fqn, edges);
+  }
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = new Map([...graph.keys()].map(k => [k, WHITE]));
+  const stack = [];
+  const cycles = new Set();
+  const dfs = node => {
+    color.set(node, GRAY); stack.push(node);
+    for (const next of graph.get(node) || []) {
+      if (color.get(next) === GRAY) {
+        const cycle = stack.slice(stack.indexOf(next)).concat(next).join(" → ");
+        cycles.add(cycle);
+      } else if (color.get(next) === WHITE) dfs(next);
+    }
+    stack.pop(); color.set(node, BLACK);
+  };
+  for (const k of graph.keys()) if (color.get(k) === WHITE) dfs(k);
+  for (const c of cycles) {
+    violations.push({ rule: "circular-dep", level: "blocker", file: c.split(" → ")[0], detail: `类级循环依赖：${c}` });
+  }
+
+  return {
+    ok: violations.length === 0,
+    scanned: units.length,
+    basePackage,
+    blockerCount: violations.length,
+    violations,
+  };
+}
+
+// ---------- chg_next：变更编号自增 ----------
+
+async function chgNext(args) {
+  const { reqId } = args || {};
+  if (!reqId) throw new Error("缺少必填参数：reqId");
+  const p = `requirements/${reqId}/changes/CHANGES.md`;
+  if (!(await exists(p))) return { ok: true, reqId, next: "CHG-01", existing: [] };
+  const content = await pi.fs.readText(p);
+  const nums = [...content.matchAll(/CHG-(\d+)/g)].map(m => parseInt(m[1], 10));
+  const max = nums.length ? Math.max(...nums) : 0;
+  return { ok: true, reqId, next: `CHG-${String(max + 1).padStart(2, "0")}`, maxExisting: max ? `CHG-${String(max).padStart(2, "0")}` : null };
+}
 async function metricsRecord(args) {
   const { reqId, kind, note } = args || {};
   if (!reqId || !kind) throw new Error("缺少必填参数：reqId / kind");
@@ -294,6 +431,48 @@ const TOOLS = [
       required: ["reqId", "kind"],
     },
     execute: metricsRecord,
+  },
+  {
+    name: "layer_scan",
+    description: "分层与域间依赖物理扫描（Java）：按包名正则判定每个类的层与所属域，检查①下层调上层/逆向依赖 ②域间直接调用（跨域必须经组装层）③类级循环依赖，全部输出为 blocker 清单。CR 第零阶段与固定检查项①②⑤⑫应优先调用本工具，不得只靠肉眼排查。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        basePackage: { type: "string", description: "项目根包名，如 com.jd.gw.card.center；只分析该前缀的 import" },
+        srcPath: { type: "string", description: "扫描根目录（相对工作区），缺省为工作区根" },
+        layers: {
+          type: "array",
+          description: "层定义，按调用顺序从上到下；patterns 命中类的 package 即归该层",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "层名，如 api / business / external" },
+              patterns: { type: "array", items: { type: "string" }, description: "包名正则，如 [\"controller|facade|consumer|listener|job\"]" },
+            },
+            required: ["name", "patterns"],
+          },
+        },
+        domains: { type: "object", description: "域名 → 包前缀映射，如 {\"user\":\"com.jd.gw.user\"}；不传则跳过域间检查" },
+        assembly: { type: "array", items: { type: "string" }, description: "组装层包前缀（允许跨域调用），如 [\"com.jd.gw.app.assembly\"]" },
+        files: { type: "array", items: { type: "string" }, description: "增量模式：只扫描这些 .java 文件（相对工作区路径）" },
+      },
+      required: ["basePackage", "layers"],
+    },
+    execute: layerScan,
+  },
+  {
+    name: "chg_next",
+    description: "变更编号自增：读取 requirements/<reqId>/changes/CHANGES.md，返回最大 CHG-NN + 1（无台账时返回 CHG-01）。/change 创建变更单前必须调用，禁止手数编号。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号 REQ-YYYYMMDD-<slug>" },
+      },
+      required: ["reqId"],
+    },
+    execute: chgNext,
   },
 ];
 
