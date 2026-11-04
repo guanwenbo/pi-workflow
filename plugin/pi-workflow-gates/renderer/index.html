@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PI-Workflow 需求看板</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --border: #262b36; --text: #e6e9ef;
+    --dim: #8b93a3; --accent: #4f8cff; --ok: #34c77b; --warn: #e6a23c; --bad: #e5534b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 13px;
+    padding: 16px 20px 24px;
+  }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  header h1 { font-size: 16px; font-weight: 600; }
+  header .meta { color: var(--dim); font-size: 12px; margin-left: auto; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar button {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px;
+  }
+  .toolbar button.active { border-color: var(--accent); color: var(--accent); }
+  .toolbar button:hover { border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--dim); font-weight: 500; font-size: 12px; white-space: nowrap; }
+  tr:hover td { background: rgba(79, 140, 255, 0.05); }
+  td.id { font-family: "SF Mono", Menlo, monospace; font-size: 12px; white-space: nowrap; }
+  td.title { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
+    border: 1px solid var(--border); white-space: nowrap;
+  }
+  .badge.draft, .badge.clarifying { color: var(--dim); }
+  .badge.clarified, .badge.designing, .badge.reviewed { color: var(--warn); border-color: var(--warn); }
+  .badge.confirmed, .badge.planned, .badge.developing { color: var(--accent); border-color: var(--accent); }
+  .badge.cr-agent, .badge.cr-human { color: #b57bff; border-color: #b57bff; }
+  .badge.cr-confirmed, .badge.testing { color: #3ec6c6; border-color: #3ec6c6; }
+  .badge.ready-release, .badge.released { color: var(--ok); border-color: var(--ok); }
+  .badge.archived { color: var(--dim); border-color: var(--dim); opacity: 0.7; }
+  .badge.blocked, .badge.change-requested { color: var(--bad); border-color: var(--bad); }
+  .num { font-family: "SF Mono", Menlo, monospace; text-align: right; }
+  .num.bad { color: var(--bad); }
+  .empty { color: var(--dim); text-align: center; padding: 48px 0; }
+  .detail {
+    margin-top: 14px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px; display: none;
+  }
+  .detail.show { display: block; }
+  .detail h2 { font-size: 13px; margin-bottom: 10px; }
+  .detail h2 .close { float: right; cursor: pointer; color: var(--dim); font-weight: 400; }
+  .logrow { display: flex; gap: 10px; padding: 3px 0; font-size: 12px; color: var(--dim); }
+  .logrow .fromto { color: var(--text); font-family: "SF Mono", Menlo, monospace; }
+  .error { color: var(--bad); padding: 12px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>需求看板</h1>
+    <span class="meta" id="wsMeta">加载中…</span>
+  </header>
+  <div class="toolbar" id="filters"></div>
+  <div id="content"><div class="empty">加载中…</div></div>
+  <div class="detail" id="detail"></div>
+
+<script>
+(async () => {
+  const bridge = window.pluginBridge;
+  const FILTERS = [
+    { key: "active", label: "进行中" },
+    { key: "cr", label: "CR 阶段" },
+    { key: "blocked", label: "异常" },
+    { key: "released", label: "已发布" },
+    { key: "all", label: "全部" },
+  ];
+  const CR_STATES = ["cr-agent", "cr-human", "cr-confirmed"];
+  const ACTIVE_EXCLUDE = ["released", "archived"];
+
+  let allRows = [];
+  let currentFilter = "active";
+
+  const ws = await bridge.call("workspace.get").catch(() => null);
+  document.getElementById("wsMeta").textContent = ws && ws.path ? ws.path : "当前工作区";
+
+  function parseFrontmatter(content) {
+    const m = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!m) return {};
+    const out = {};
+    for (const line of m[1].split("\n")) {
+      const kv = line.match(/^(\w[\w-]*)\s*:\s*(.*)$/);
+      if (kv) out[kv[1]] = kv[2].trim();
+    }
+    return out;
+  }
+
+  function parseMetric(content, name) {
+    const re = new RegExp("^\\|\\s*" + name + "\\s*\\|([^|]*)\\|");
+    const m = content.match(re);
+    return m ? m[1].trim() : "-";
+  }
+
+  function parseStatusLog(content) {
+    return content.split("\n")
+      .filter(l => /^\|\s*\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s*\|/.test(l))
+      .map(l => l.split("|").slice(1, -1).map(c => c.trim()))
+      .map(cols => ({ time: cols[0], from: cols[1], to: cols[2], by: cols[3], note: cols[4] }));
+  }
+
+  async function loadAll() {
+    let entries;
+    try {
+      entries = await bridge.call("fs.glob", "requirements/REQ-*/00-meta.md");
+    } catch (e) {
+      try {
+        const list = await bridge.call("fs.list", "requirements");
+        entries = [];
+        for (const e of list) {
+          if (e.isDirectory && e.name.startsWith("REQ-")) entries.push(`requirements/${e.name}/00-meta.md`);
+        }
+      } catch (e2) { entries = []; }
+    }
+    const rows = [];
+    for (const p of entries) {
+      try {
+        const content = await bridge.call("fs.readText", p);
+        const fm = parseFrontmatter(content);
+        const dir = p.split("/").slice(0, -1).join("/");
+        rows.push({
+          id: fm.id || dir.split("/").pop(),
+          title: fm.title || "-",
+          status: fm.status || "draft",
+          owner: fm.owner || "-",
+          updated: fm.updated || "-",
+          cr: parseMetric(content, "CR 轮次"),
+          rework: parseMetric(content, "返工次数"),
+          logs: parseStatusLog(content),
+        });
+      } catch (e) { /* 跳过不可读 */ }
+    }
+    rows.sort((a, b) => (b.updated || "").localeCompare(a.updated || ""));
+    return rows;
+  }
+
+  function applyFilter(rows, key) {
+    if (key === "all") return rows;
+    if (key === "active") return rows.filter(r => !ACTIVE_EXCLUDE.includes(r.status));
+    if (key === "cr") return rows.filter(r => CR_STATES.includes(r.status));
+    if (key === "blocked") return rows.filter(r => r.status === "blocked" || r.status === "change-requested");
+    if (key === "released") return rows.filter(r => r.status === "released" || r.status === "archived");
+    return rows;
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  function render() {
+    const rows = applyFilter(allRows, currentFilter);
+    const content = document.getElementById("content");
+    if (!rows.length) {
+      content.innerHTML = `<div class="empty">当前过滤条件下没有需求档案。<br/>用 /req-new 创建第一个需求。</div>`;
+      return;
+    }
+    content.innerHTML = `<table>
+      <thead><tr>
+        <th>编号</th><th>标题</th><th>状态</th><th>负责人</th>
+        <th style="text-align:right">CR轮次</th><th style="text-align:right">返工</th><th>更新</th>
+      </tr></thead>
+      <tbody>${rows.map((r, i) => `<tr data-i="${allRows.indexOf(r)}">
+        <td class="id">${esc(r.id)}</td>
+        <td class="title" title="${esc(r.title)}">${esc(r.title)}</td>
+        <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
+        <td>${esc(r.owner)}</td>
+        <td class="num">${esc(r.cr)}</td>
+        <td class="num ${parseInt(r.rework) > 0 ? "bad" : ""}">${esc(r.rework)}</td>
+        <td>${esc(r.updated)}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+    for (const tr of content.querySelectorAll("tr[data-i]")) {
+      tr.addEventListener("click", () => showDetail(allRows[Number(tr.dataset.i)]));
+    }
+  }
+
+  function showDetail(r) {
+    const d = document.getElementById("detail");
+    d.className = "detail show";
+    d.innerHTML = `<h2>${esc(r.id)} · 状态流转记录
+        <span class="close" id="detailClose">收起 ✕</span></h2>
+      ${r.logs.length ? r.logs.map(l => `<div class="logrow">
+        <span>${esc(l.time)}</span><span class="fromto">${esc(l.from)} → ${esc(l.to)}</span>
+        <span>${esc(l.by)}</span><span>${esc(l.note)}</span>
+      </div>`).join("") : '<div class="logrow">暂无流转记录</div>'}`;
+    document.getElementById("detailClose").addEventListener("click", () => { d.className = "detail"; });
+    d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  const filtersEl = document.getElementById("filters");
+  for (const f of FILTERS) {
+    const b = document.createElement("button");
+    b.textContent = f.label;
+    if (f.key === currentFilter) b.className = "active";
+    b.addEventListener("click", () => {
+      currentFilter = f.key;
+      for (const x of filtersEl.children) x.className = "";
+      b.className = "active";
+      render();
+    });
+    filtersEl.appendChild(b);
+  }
+
+  allRows = await loadAll();
+  render();
+})().catch(e => {
+  document.getElementById("content").innerHTML = `<div class="error">加载失败：${String(e && e.message || e)}</div>`;
+});
+</script>
+</body>
+</html>
