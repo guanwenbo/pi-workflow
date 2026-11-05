@@ -1,0 +1,60 @@
+.pi/commands/breakdown.md
+  h_b98c004121ae66 28
+.pi/commands/code-review.md
+  h_b98c004121ae66 1-107
+.pi/commands/cr.md
+  h_b98c004121ae66 49
+.pi/commands/review.md
+  h_b98c004121ae66 29
+README.md
+  h_b98c004121ae66 9,14-15,25
+plugin/pi-code-review/README.md
+  h_b98c004121ae66 1-83
+plugin/pi-code-review/main.js
+  h_b98c004121ae66 1-1117
+plugin/pi-code-review/manifest.json
+  h_b98c004121ae66 1-134
+rules/semgrep/org-redlines.yml
+  h_b98c004121ae66 1-113
+rules/severity.json
+  h_b98c004121ae66 1-55
+scripts/review/lib/pom-inject.sh
+  h_b98c004121ae66 1-233
+scripts/review/run-l1.sh
+  h_b98c004121ae66 1-473
+workflow/ARCHITECTURE.md
+  h_b98c004121ae66 10,16,39,43
+workflow/ORCHESTRATOR.md
+  h_b98c004121ae66 41,54-55
+workflow/SEMANTICS.md
+  h_b98c004121ae66 1-64
+workflow/WORKFLOW.md
+  h_b98c004121ae66 7,37,50,71,76,79-80,83-85
+workflow/roles/architect.md
+  h_b98c004121ae66 25,44
+workflow/roles/code-review-validator.md
+  h_b98c004121ae66 1-62
+workflow/roles/code-reviewer.md
+  h_b98c004121ae66 1-112
+workflow/roles/cr-architect.md
+  h_b98c004121ae66 36,45
+workflow/roles/developer.md
+  h_b98c004121ae66 24-25
+workflow/templates/03-design.md
+  h_b98c004121ae66 144-145
+workflow/templates/04-review.md
+  h_b98c004121ae66 13
+workflow/templates/06a-code-review.md
+  h_b98c004121ae66 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "940ac1609329037bd56f84c16ec915359121c479",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
