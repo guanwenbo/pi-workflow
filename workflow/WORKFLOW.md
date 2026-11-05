@@ -4,7 +4,7 @@
 
 ## 一、这是什么
 
-一套运行在 PI-Desktop 上的企业级应用需求承接工作流：**父 Agent 总控 + 10 个角色 Agent**，覆盖需求从承接到归档复盘的全生命周期。纯 Markdown 配置，无需安装，进 Git 版本管理。
+一套运行在 PI-Desktop 上的企业级应用需求承接工作流：**父 Agent 总控 + 12 个角色 Agent**，覆盖需求从承接到归档复盘的全生命周期。纯 Markdown 配置，无需安装，进 Git 版本管理。
 
 ## 二、核心机制
 
@@ -34,6 +34,7 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | `/review` | 评审 + 人工复审 | 评审员 | 04-review.md；人工确认 → confirmed |
 | `/breakdown` | 任务拆解 | 计划工程师 | 05-tasks.md（WBS） |
 | `/dev` | 开发 | 开发工程师 | 代码 + 任务勾选 |
+| `/code-review` | 代码级评审（L1 机械 + L2 多视角 + 验证轮） | 代码评审员 + 代码评审验证官 | 06a-code-review.md、reviews/issues.json |
 | `/cr` | Agent CR + 人工复验 | 架构师CR | 06-cr-report.md、07-cr-handoff.md |
 | `/test-plan` | 测试执行与回归 | 测试工程师 | 用例执行结果回填 + 补充用例 |
 | `/pre-release` | 上线检查 | 发布工程师 | 09-release.md |
@@ -46,7 +47,7 @@ change-requested：变更流程，审批通过后回流到对应阶段
 ```
 /req-new → /req-clarify → /design（方案设计 + 测试计划同步产出）
 → /review（Agent 评审设计+用例 → 人工复审确认）→ /breakdown
-→ /dev（参考测试用例边界场景）→ /cr（CR 循环 → 编译验证 → 人工复验）
+→ /dev（参考测试用例边界场景）→ /code-review（L1 机械 → L2 语义 → 验证轮）→ /cr（CR 循环 → 编译验证 → 人工复验）
 → /test-plan（执行用例与回归）→ /pre-release → 发布 → /retro
 
 /risk、/change 贯穿全程，任意阶段可执行
@@ -67,16 +68,19 @@ change-requested：变更流程，审批通过后回流到对应阶段
 ## 七、文件地图
 
 ```
-```
-.pi/commands/          12 个命令定义
+.pi/commands/          13 个命令定义
 workflow/
   WORKFLOW.md          本文档
   ORCHESTRATOR.md      父 Agent 总控协议（派发/摘要/门禁）
   ARCHITECTURE.md      架构宪法（DDD 设计 + 三层落地）
+  SEMANTICS.md         语义口径机制与模板（台账落在被评审项目内，R8 判据）
   PROFILE.md           开发者画像（随需求积累进化）
   EVOLUTION.md         流程优化提案记录
-  roles/               10 个角色定义
-  templates/           14 个阶段文档模板
+  roles/               12 个角色定义（含代码评审员 / 代码评审验证官）
+  templates/           15 个阶段文档模板
 requirements/          需求档案存放区
 plugin/pi-workflow-gates/  机械层门禁插件（建档/状态机/账本，代码物理执行）
+plugin/pi-code-review/     代码级评审判定插件（归一/diff过滤/指纹去重/门禁/报告，7 个 cr_* 工具）
+rules/                 L1 规则资产（severity.json 严重度映射、semgrep/ 自有红线）
+scripts/review/        L1 执行器（run-l1.sh：diff 落盘 + 11 个工具 + status.json）
 ```

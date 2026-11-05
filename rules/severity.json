@@ -1,0 +1,55 @@
+{
+  "_doc": "项目级严重度映射覆盖。cr_ingest 会读取本文件并与内置默认表合并；未列出的工具沿用默认。写法两种：{工具:{原始级别:blocker|major|minor}} 或 {工具:\"blocker\"}。_doc 键会被忽略。注意：归入 R6（无用代码）的条目由插件强制不低于 major，本文件无法把它降为 minor。",
+  "gitleaks": { "_default": "blocker" },
+  "enforcer": { "_default": "blocker" },
+  "archunit": { "_default": "blocker" },
+  "errorprone": { "_default": "blocker" },
+  "semgrep": {
+    "error": "blocker",
+    "warning": "major",
+    "note": "minor",
+    "info": "minor",
+    "_default": "major"
+  },
+  "checkstyle": { "_default": "minor" },
+  "pmd": {
+    "blocker": "major",
+    "critical": "major",
+    "major": "minor",
+    "minor": "minor",
+    "_default": "minor"
+  },
+  "p3c": {
+    "blocker": "major",
+    "critical": "major",
+    "major": "minor",
+    "minor": "minor",
+    "_default": "minor"
+  },
+  "spotbugs": {
+    "high": "blocker",
+    "medium": "major",
+    "low": "minor",
+    "_default": "minor"
+  },
+  "dependencycheck": {
+    "critical": "blocker",
+    "severe": "blocker",
+    "high": "blocker",
+    "medium": "major",
+    "low": "minor",
+    "_default": "minor"
+  },
+  "dependency_analyze": { "_default": "minor" },
+  "dependency_tree": {
+    "blocker": "blocker",
+    "major": "major",
+    "_default": "major"
+  },
+  "sonar": {
+    "blocker": "blocker",
+    "critical": "major",
+    "major": "minor",
+    "_default": "minor"
+  }
+}

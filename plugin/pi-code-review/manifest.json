@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "id": "gwb.pi-code-review",
+  "name": "PI-Workflow Code Review",
+  "version": "0.2.0",
+  "description": "pi-workflow 代码级评审判定层：轮次开档（cr_begin，含端归属）、工具输出归一（cr_ingest，12 类工具 + jar 冲突 dependency.tree）、规则豁免（cr_rule）、门禁判定（cr_gate）、报告落盘（cr_report，含端归属清单）、基线管理（cr_baseline）、改动画像（cr_profile）。执行层（跑 mvn/sonar、临时注入插件并回滚）由 Agent 的 Bash 与 scripts/review/run-l1.sh 完成，本插件不执行进程、不读 .git。",
+  "main": "main.js",
+  "safetyNotes": "读工作区全部文件（含源码、diff、工具原始产物、代码级评审档案）用于归一与判定；写仅限 requirements/ 目录。不执行任何进程，不访问网络，不读 .git（平台禁止），不修改源码，不删文件。",
+  "contributes": {
+    "agentTools": [
+      {
+        "name": "cr_begin",
+        "description": "开一轮代码级评审：校验 00-meta 状态（developing/cr-agent）、读取上轮 open 项、按改动体量定档、判定是否跳过，产出 reviews/R-NN/plan.json。端归属（运营端/非运营端）不靠参数，由 L2 评审员判定出清单；endScope 仅供人工中途给建议。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号 REQ-YYYYMMDD-<slug>" },
+            "profile": { "type": "string", "description": "lite|std|full；缺省 auto 按 diffStat 定档（端归属不参与定档）" },
+            "diffStat": {
+              "type": "object",
+              "description": "改动体量（由 Agent 用 git diff --shortstat 得出后传入；插件不跑 git）",
+              "properties": {
+                "files": { "type": "number" },
+                "additions": { "type": "number" },
+                "deletions": { "type": "number" }
+              }
+            },
+            "touchedMoney": { "type": "boolean", "description": "改动是否触及金额/资产；为真则强制 full + V-money" },
+            "headSha": { "type": "string", "description": "当前 HEAD sha，用于判断同一提交已通过则跳过" },
+            "endScope": { "type": "string", "description": "可选：人工中途给的端归属建议（运营端|非运营端|批量任务|内部工具）；不传则由 L2 判定，不做档位调整" },
+            "incremental": { "type": "string", "description": "增量评审的起始 sha" }
+          },
+          "required": ["reqId"]
+        }
+      },
+      {
+        "name": "cr_ingest",
+        "description": "归一入口：读取 run-l1.sh 的原始产物（sarif/xml/json/txt）与 Agent 落盘的 unified diff，统一成 issue 模型；执行 diff 行过滤、baseline 抑制、指纹去重（同 fp 合并为 occurrences）、严重度映射与 R 项归类，产出 reviews/R-NN/issues.json 与工具覆盖矩阵。",
+        "risk": "low",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "round": { "type": "number", "description": "轮次号；缺省取已落盘最高轮次" },
+            "diffPath": { "type": "string", "description": "unified diff 文件路径（相对工作区），如 requirements/<reqId>/reviews/R-01/diff.patch" },
+            "rawDir": { "type": "string", "description": "工具原始产物目录；缺省 reviews/R-NN/raw" }
+          },
+          "required": ["reqId"]
+        }
+      },
+      {
+        "name": "cr_rule",
+        "description": "规则仲裁：对指定 fingerprint 执行 downgrade（降级）或 waive（豁免，必须给理由与期限）。豁免写入 reviews/waivers.md 并留痕，无理由直接拒绝。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "round": { "type": "number", "description": "轮次号" },
+            "fp": { "type": "string", "description": "问题指纹（issues.json 中的 fp）" },
+            "action": { "type": "string", "enum": ["downgrade", "waive"], "description": "动作" },
+            "level": { "type": "string", "enum": ["blocker", "major", "minor"], "description": "downgrade 的目标级别" },
+            "reason": { "type": "string", "description": "理由（waive 必填）" },
+            "until": { "type": "string", "description": "期限/责任人（waive 建议填）" }
+          },
+          "required": ["reqId", "fp", "action"]
+        }
+      },
+      {
+        "name": "cr_gate",
+        "description": "门禁判定（物理拦截）：汇总本轮 open blocker、未删除的 R6 无用代码、工具覆盖缺口（含 sonar 连续不可用），返回 ok 与原因。/cr 前置必须 ok=true。",
+        "risk": "low",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" }
+          },
+          "required": ["reqId"]
+        }
+      },
+      {
+        "name": "cr_report",
+        "description": "生成/追加代码级评审报告：把 plan + issues + coverage 渲染成 06a-code-review.md 的第 N 轮小节（按轮追加，不覆盖），并返回 SUMMARY 摘要行。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" },
+            "note": { "type": "string", "description": "本轮补充说明（写入轮次头）" }
+          },
+          "required": ["reqId"]
+        }
+      },
+      {
+        "name": "cr_baseline",
+        "description": "存量基线管理：freeze 把当前轮全部指纹冻结为基线（首次接入用），update 增量合并并记录新增/移除。基线只抑制「存量」问题，不影响本轮新增问题。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "action": { "type": "string", "enum": ["freeze", "update", "status"], "description": "动作" },
+            "round": { "type": "number", "description": "轮次号" }
+          },
+          "required": ["reqId", "action"]
+        }
+      },
+      {
+        "name": "cr_profile",
+        "description": "改动画像：统计新增行数、触及文件数、R6 删除量、红线密度（blocker/千行）、无测试覆盖的改动文件清单，供人工复验排优先级。",
+        "risk": "low",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": { "type": "string", "description": "需求编号" },
+            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" },
+            "changedFiles": { "type": "array", "items": { "type": "string" }, "description": "改动文件清单（可选；不传则从 plan.diffStat 与 diff 推断）" }
+          },
+          "required": ["reqId"]
+        }
+      }
+    ]
+  },
+  "permissions": ["agent.tool.register", "fs.read", "fs.write"],
+  "fs": {
+    "read": { "root": "workspace", "scope": ["**"] },
+    "write": { "root": "workspace", "scope": ["requirements/**"] }
+  },
+  "engines": { "piDesktop": ">=0.9.0" },
+  "activationEvents": ["onStartup"]
+}

@@ -38,6 +38,7 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 | `/review` | `designing`（03-design 与 08-test-plan 已产出） | `reviewed` →（人工复审）→ `confirmed` |
 | `/breakdown` | `confirmed` | `planned` |
 | `/dev` | `planned` | `developing` |
+| `/code-review` | `developing` | 不改变状态（通过后 `cr_gate` ok=true 才可进 `/cr`） |
 | `/cr` | `developing` | `cr-agent` → `cr-human` → `cr-confirmed` |
 | `/test-plan` | `cr-confirmed` | `testing`（执行用例与回归） |
 | `/pre-release` | `testing` | `ready-release`（前置：自测全部完成后须先**回流设计文档补齐出入**并过**一致性 CR**，EP-06） |
@@ -49,6 +50,8 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 - **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 
 - **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。
+
+- **代码评审门禁（EP-08）**：`/dev` 完成后、`/cr` 前，必须先过 `/code-review`（L1 机械层 → 端归属判定 → L2 多视角语义评审 → 验证轮），产出 `06a-code-review.md` 与 `reviews/issues.json`；`cr_gate` 未通过（含 R6 无用代码未删除）不得进入 `/cr`。**端归属（运营端/非运营端）不靠参数**：由评审员据入口/调用方/鉴权/页面来源等证据自行判定并出清单，人工可在中途给建议；判不准按非运营端从严；判为运营端时按分级豁免并发/幂等要求。
 
 ## 五、派发协议（父 → 子）
 

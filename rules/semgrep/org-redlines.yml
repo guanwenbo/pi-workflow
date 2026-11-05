@@ -1,0 +1,113 @@
+# ---------------------------------------------------------------------------
+# 自有红线规则（org red lines）— 对应 ARCHITECTURE.md 第五节的「分布式单机假设」
+#
+# 用法（run-l1.sh 自动识别本目录）：
+#   semgrep --sarif --config rules/semgrep --error .
+#
+# 规则级别约定：ERROR → blocker（cr_ingest 按 rules/severity.json 映射）
+# 说明：这些是「看起来能跑、上线必然出事」的模式，机械可判，交给 LLM 只会更贵更不准。
+# ---------------------------------------------------------------------------
+rules:
+  - id: org.threadlocal-request-state
+    languages: [java]
+    severity: ERROR
+    message: >-
+      ThreadLocal 存跨请求状态：实例/线程复用时会串数据，分布式部署下更不可控。
+      改用显式传参或请求上下文对象，并在 finally 中 remove（若确为框架必需）。
+    metadata:
+      rule-owner: architecture
+      category: distributed
+    patterns:
+      - pattern-either:
+          - pattern: |
+              static final ThreadLocal<...> $F = ...;
+          - pattern: |
+              private static ThreadLocal<...> $F = ...;
+          - pattern: |
+              static ThreadLocal<...> $F = ...;
+
+  - id: org.local-cache-as-distributed
+    languages: [java]
+    severity: WARNING
+    message: >-
+      本地内存容器当共享缓存用（HashMap/ConcurrentHashMap/Caffeine 存业务共享状态）：
+      多实例之间不共享，交易链路禁用；运营端如确为进程内缓存需注明有效期与失效来源。
+    metadata:
+      rule-owner: architecture
+      category: distributed
+    patterns:
+      - pattern-either:
+          - pattern: |
+              static final Map<...> $C = new HashMap<...>();
+          - pattern: |
+              private static Map<...> $C = new HashMap<...>();
+          - pattern: |
+              static final Map<...> $C = new ConcurrentHashMap<...>();
+          - pattern: |
+              private static Map<...> $C = new ConcurrentHashMap<...>();
+          - pattern: |
+              static final Cache<...> $C = Caffeine.newBuilder()...build();
+
+  - id: org.remote-call-in-loop
+    languages: [java]
+    severity: ERROR
+    message: >-
+      循环内发起远程调用：N+1 且放大下游压力，必须批量化或前置批量查询。
+      （若循环由批量接口保证上限，请在代码注释中写明上限值，评审时按例外处理。）
+    metadata:
+      rule-owner: architecture
+      category: performance
+    patterns:
+      - pattern-inside: |
+          for (...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $CLIENT.$METHOD(...)
+          - pattern: $REPO.$METHOD(...)
+      - metavariable-regex:
+          metavariable: $CLIENT
+          regex: (?i).*(client|service|facade|api|remote|rpc).*
+
+  - id: org.local-file-shared-state
+    languages: [java]
+    severity: ERROR
+    message: >-
+      本地文件存共享数据：多实例不可见且无法并发控制。共享状态请用 DB 或分布式缓存。
+    metadata:
+      rule-owner: architecture
+      category: distributed
+    patterns:
+      - pattern-either:
+          - pattern: new FileWriter(...)
+          - pattern: new PrintWriter(new File(...))
+          - pattern: Files.write(...)
+
+  - id: org.catch-and-swallow
+    languages: [java]
+    severity: ERROR
+    message: >-
+      异常被空吞（catch 块内无日志、无抛出、无兜底语义）：
+      对应 R3 静默失败与 ARCHITECTURE 第七节。必须至少记日志并显式说明降级语义。
+    metadata:
+      rule-owner: architecture
+      category: reliability
+    patterns:
+      - pattern: |
+          try { ... } catch ($E $e) { }
+      - pattern: |
+          try { ... } catch ($E $e) {
+            ...
+          }
+      - pattern-not: |
+          try { ... } catch ($E $e) {
+            ...
+            $LOG.$M(...);
+            ...
+          }
+      - pattern-not: |
+          try { ... } catch ($E $e) {
+            ...
+            throw ...;
+            ...
+          }
