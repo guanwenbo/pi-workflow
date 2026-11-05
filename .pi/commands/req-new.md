@@ -23,9 +23,9 @@ description: 承接新需求：生成需求编号、创建需求档案目录与�
 
 1. 生成需求编号：`REQ-YYYYMMDD-<slug>`，其中 YYYYMMDD 为当天日期，slug 为需求名（小写、连字符）。
 2. 创建需求档案目录：`requirements/REQ-YYYYMMDD-<slug>/`，并创建空目录 `changes/`。
-3. 按模板 `workflow/templates/00-meta.md` 生成 `00-meta.md`，frontmatter 填写：id、title、status=draft、priority/owner 留空待用户填写、created/updated 为当天日期。
-4. 按模板 `workflow/templates/01-intake.md` 生成 `01-intake.md`，未知字段标注「待用户填写」，不得编造。
-5. 按模板 `workflow/templates/SUMMARY.md` 生成 `SUMMARY.md`，写入首条摘要（≤5 行）：需求编号、需求名、创建时间、当前阶段 intake。
+3. 按模板 `docs/templates/00-meta.md` 生成 `00-meta.md`，frontmatter 填写：id、title、status=draft、priority/owner 留空待用户填写、created/updated 为当天日期。
+4. 按模板 `docs/templates/01-intake.md` 生成 `01-intake.md`，未知字段标注「待用户填写」，不得编造。
+5. 按模板 `docs/templates/SUMMARY.md` 生成 `SUMMARY.md`，写入首条摘要（≤5 行）：需求编号、需求名、创建时间、当前阶段 intake。
 
 ## 产出与状态流转
 

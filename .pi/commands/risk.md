@@ -18,7 +18,7 @@ description: 风险管控：派发风险官维护风险登记册（任意阶段�
 1. 派发 Task 子代理，任务简报：
    - 角色：风险官
    - 任务：识别、评估并维护本需求的风险登记册
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/` 目录下已存在的全部档案（00-meta.md、SUMMARY.md、03-design.md、05-tasks.md、06-cr-report.md、10-risks.md 等）、`workflow/PROFILE.md`、`workflow/templates/10-risks.md`
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/` 目录下已存在的全部档案（00-meta.md、SUMMARY.md、03-design.md、05-tasks.md、06-cr-report.md、10-risks.md 等）、`docs/PROFILE.md`、`docs/templates/10-risks.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/10-risks.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 2. `10-risks.md` 风险登记册表格字段：

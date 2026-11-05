@@ -23,10 +23,10 @@ description: 开发实现：派发开发工程师按 WBS 逐项实现并更新�
    - **模型：`custom/DeepSeek-V4.1-Flash-A-joybuilder`**（oxygen-deepseek；强制显式指定，不得用默认模型）
    - **任务开发一律派 sub agent 执行，父 Agent 不直接写代码**
    - 任务：实现指定任务（明确任务编号范围，如 T-01 ~ T-03）
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、相关源码目录
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`docs/ARCHITECTURE.md`、`docs/PROFILE.md`、相关源码目录
    - 产出文件：源码改动 + 更新 `05-tasks.md` 对应任务勾选状态
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
-3. 实现前开发工程师**必读** `workflow/ARCHITECTURE.md` 与 `03-design.md` 第六部分（分层架构与数据流转），严格遵守：
+3. 实现前开发工程师**必读** `docs/ARCHITECTURE.md` 与 `03-design.md` 第六部分（分层架构与数据流转），严格遵守：
    - 单向调用：API层 → 业务层 → 外部依赖层，禁止循环依赖
    - API层只做入参校验+防腐+参数转化，禁业务逻辑
    - 业务逻辑全部在业务层（可再拆子层）

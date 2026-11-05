@@ -20,7 +20,7 @@ description: 测试执行与用例回归：执行设计期产出的测试用例�
 2. 派发 Task 子代理，任务简报：
    - 角色：测试工程师
    - 任务：执行设计期产出的测试用例，回填执行结果；针对实现差异补充用例
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md`、`workflow/PROFILE.md`、相关源码（只读）
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md`、`docs/PROFILE.md`、相关源码（只读）
    - 产出文件：更新 `requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`（回填执行结果列 + 补充用例）
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 3. 执行要求：

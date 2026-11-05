@@ -69,11 +69,11 @@ description: 代码级评审：L1 机械层 + L2 多视角语义评审 + 验证�
    - 确认 → 保留原级别；降级 → 按建议级别；驳回 → 丢弃并记录理由（用于统计假阳性率）
 8. 零 open blocker 才可进阶段三；major 可登记待修但须列明，minor 只记录不阻塞。
    - **R6（无用代码）为 major，但未删除即不放行**；删除后必须**重跑阶段一 + 增量阶段二**（删除本身会引入引用问题）
-9. **R8 未取证时不判冲突**：项目无台账时，先按 `workflow/SEMANTICS.md`「二、首次评审的初始化」取证建台账，取证结果需用户确认；取证不到只记「未登记」，不得凭空判定既有口径。
+9. **R8 未取证时不判冲突**：项目无台账时，先按 `docs/SEMANTICS.md`「二、首次评审的初始化」取证建台账，取证结果需用户确认；取证不到只记「未登记」，不得凭空判定既有口径。
 
 ### 阶段三：产出与门禁
 
-10. 调 `cr_report{reqId, round}` 生成 `06a-code-review.md`（按 `workflow/templates/06a-code-review.md`，**按轮追加不覆盖**）+ `reviews/issues.json` + SUMMARY ≤5 行
+10. 调 `cr_report{reqId, round}` 生成 `06a-code-review.md`（按 `docs/templates/06a-code-review.md`，**按轮追加不覆盖**）+ `reviews/issues.json` + SUMMARY ≤5 行
 11. 最终 `cr_gate`：
     - `ok=true` → 提示「L1/L2 已通过，请执行 /cr <需求编号>」
     - `ok=false`（仍有 open blocker，或 R6 未删）→ 派发开发工程师修复，本轮 `metrics.rework` +1

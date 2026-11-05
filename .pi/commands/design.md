@@ -21,7 +21,7 @@ description: 方案设计：派发架构设计师产出 DDD 设计稿，并同�
 3. 派发 Task 子代理，任务简报：
    - 角色：架构设计师
    - 任务：基于澄清定稿产出设计稿，严格遵守 DDD 与三层架构约束
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/03-design.md`、技术栈探测结果
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`docs/ARCHITECTURE.md`、`docs/PROFILE.md`、`docs/templates/03-design.md`、技术栈探测结果
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 4. **架构师方案评审（门禁，EP-03）**：设计稿产出后，派发 Task 子代理做**方案评审**：
@@ -43,11 +43,11 @@ description: 方案设计：派发架构设计师产出 DDD 设计稿，并同�
    - 业务逻辑只能写在业务层；API层只做入参校验+防腐+参数转化；外部依赖层只做参数转化+防腐且绝对无业务逻辑
    - 下层不做冗余参数校验
    - 设计文档纪律：03-design.md 正文始终只保留最终态，不写过程结论（变更/修订过程记 changes/CHANGES.md 与评审/CR 报告），确保代码与设计 1:1 还原
-   - 详见 `workflow/ARCHITECTURE.md`
+   - 详见 `docs/ARCHITECTURE.md`
 7. 设计稿完成后，**同步派发测试工程师**（任务简报）：
    - 角色：测试工程师
    - 任务：基于设计稿与验收标准产出测试计划，供开发阶段参考边界场景
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、刚产出的 `03-design.md`、`workflow/PROFILE.md`、`workflow/templates/08-test-plan.md`
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、刚产出的 `03-design.md`、`docs/PROFILE.md`、`docs/templates/08-test-plan.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`
    - 返回格式：≤200 字摘要
 8. `08-test-plan.md` 要求：每条 AC 至少 1 条用例（用例编号 TC-001…，字段：编号/类型[正常|边界|异常|回归]/前置条件/步骤/预期/关联 AC）；**边界与异常用例必须对照设计稿的「边界定义」「分布式设计」章节推导**；末尾附 AC 覆盖矩阵，存在未覆盖 AC 必须补齐。

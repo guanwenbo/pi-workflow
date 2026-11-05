@@ -20,7 +20,7 @@ description: 设计评审：评审员审查设计稿+测试计划，Agent 评审
 1. 派发 Task 子代理，任务简报：
    - 角色：评审员
    - 任务：对照评审 Checklist 逐项审查设计稿，输出评审纪要
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/04-review.md`
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`、`docs/ARCHITECTURE.md`、`docs/PROFILE.md`、`docs/templates/04-review.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/04-review.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 2. 评审 Checklist 逐项自查（写入 04-review.md，每项标注 通过/不通过/不适用）：

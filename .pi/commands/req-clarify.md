@@ -19,7 +19,7 @@ description: 需求澄清：派发需求分析师生成澄清问题清单，确�
 1. 父 Agent 派发 Task 子代理，任务简报：
    - 角色：需求分析师
    - 任务：阅读 intake 档案，识别信息缺口与歧义点，生成澄清问题清单
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/01-intake.md`、`workflow/PROFILE.md`、`workflow/templates/02-clarification.md`
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/01-intake.md`、`docs/PROFILE.md`、`docs/templates/02-clarification.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/02-clarification.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 2. 需求分析师在 `02-clarification.md` 中生成澄清问题清单，按主题分组（业务规则 / 数据 / 接口 / 非功能 / 边界场景），每题标注「阻塞级 / 重要 / 可选」。

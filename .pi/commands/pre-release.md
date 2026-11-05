@@ -19,7 +19,7 @@ description: 上线检查：派发发布工程师执行发布 Checklist 并产�
 1. 派发 Task 子代理，任务简报：
    - 角色：发布工程师
    - 任务：逐项执行发布 Checklist，输出发布档案
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md`、`requirements/REQ-YYYYMMDD-<slug>/10-risks.md`（若存在）、`workflow/PROFILE.md`、`workflow/templates/09-release.md`、仓库配置与部署相关文件
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`requirements/REQ-YYYYMMDD-<slug>/08-test-plan.md`、`requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md`、`requirements/REQ-YYYYMMDD-<slug>/10-risks.md`（若存在）、`docs/PROFILE.md`、`docs/templates/09-release.md`、仓库配置与部署相关文件
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/09-release.md`
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 2. `09-release.md` 发布 Checklist（逐项标注 就绪/未就绪/不适用，未就绪项必须给出处理方案与 Owner）：

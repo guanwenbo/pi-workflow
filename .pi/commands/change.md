@@ -19,7 +19,7 @@ description: 变更管理：创建变更单、评估影响，审批后回流受�
 2. 派发 Task 子代理，任务简报：
    - 角色：风险官
    - 任务：创建变更单，完成影响分析
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/` 目录下已存在的全部档案、`workflow/PROFILE.md`、`workflow/templates/CHANGES.md`
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/` 目录下已存在的全部档案、`docs/PROFILE.md`、`docs/templates/CHANGES.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/changes/CHANGES.md`（在台账末尾追加一节）
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 3. 在 `changes/CHANGES.md` **追加一节**（`## 需求变更 — CHG-NN（...）`，不新建文件），内容要求：

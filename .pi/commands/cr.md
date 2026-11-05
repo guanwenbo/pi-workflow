@@ -37,7 +37,7 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
    - 角色：架构师CR
    - **模型：`custom/GPT-6-Sol-joybuilder`（首选，provider=oxygen-gpt）→ 回退 `custom/GPT-6-Astra-joybuilder`**（强制显式指定，禁止用默认模型；前置：oxygen-gpt 的 api_style 必须为 `responses`；回退时须在 06-cr-report.md 注明实际模型）
    - 任务：对照设计稿与架构约束，审查本需求全部代码改动（git diff / 提交记录）
-   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`workflow/ARCHITECTURE.md`、`workflow/PROFILE.md`、`workflow/templates/06-cr-report.md`、`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、改动涉及的源码
+   - 可读文件白名单：`requirements/REQ-YYYYMMDD-<slug>/03-design.md`、`docs/ARCHITECTURE.md`、`docs/PROFILE.md`、`docs/templates/06-cr-report.md`、`requirements/REQ-YYYYMMDD-<slug>/05-tasks.md`、改动涉及的源码
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/06-cr-report.md`（**每轮追加，不覆盖**，标注「第 N 轮」）
    - 返回格式：≤200 字摘要（结论 + 产出路径 + 待决策事项）
 3. 审查要点（写入任务简报）：
@@ -66,7 +66,7 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
 7. 派发 Task 子代理，任务简报：
    - 角色：架构师CR
    - 任务：生成人工复验交接文档，让人工评审者无需翻代码即可定位重点
-   - 可读文件白名单：`06-cr-report.md`、`03-design.md`、`05-tasks.md`、全部改动源码、`workflow/templates/07-cr-handoff.md`
+   - 可读文件白名单：`06-cr-report.md`、`03-design.md`、`05-tasks.md`、全部改动源码、`docs/templates/07-cr-handoff.md`
    - 产出文件：`requirements/REQ-YYYYMMDD-<slug>/07-cr-handoff.md`
    - 返回格式：≤200 字摘要
 8. `07-cr-handoff.md` 必须包含：
