@@ -1,0 +1,88 @@
+.pi/commands/breakdown.md
+  h_b98c004121ae66 24
+.pi/commands/change.md
+  h_b98c004121ae66 22
+.pi/commands/code-review.md
+  h_b98c004121ae66 72,76
+.pi/commands/cr.md
+  h_b98c004121ae66 40,69
+.pi/commands/design.md
+  h_b98c004121ae66 24,46,50
+.pi/commands/dev.md
+  h_b98c004121ae66 26,29
+.pi/commands/pre-release.md
+  h_b98c004121ae66 22
+.pi/commands/req-clarify.md
+  h_b98c004121ae66 22
+.pi/commands/req-new.md
+  h_b98c004121ae66 26-28
+.pi/commands/retro.md
+  h_b98c004121ae66 22-23,29,32,41
+.pi/commands/review.md
+  h_b98c004121ae66 23
+.pi/commands/risk.md
+  h_b98c004121ae66 21
+.pi/commands/test-plan.md
+  h_b98c004121ae66 23
+README.md
+  h_b98c004121ae66 18-27,32-37
+assets/README.md
+  h_b98c004121ae66 1-29
+docs/ARCHITECTURE.md
+  h_b98c004121ae66 12
+docs/EVOLUTION.md
+  h_b98c004121ae66 36-45,51-67,69-74,82
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 60,71,91-92
+docs/SEMANTICS.md
+  h_b98c004121ae66 5,11
+docs/WORKFLOW.md
+  h_b98c004121ae66 71-72,81-86
+docs/roles/architect.md
+  h_b98c004121ae66 15,19,51-52
+docs/roles/code-review-validator.md
+  h_b98c004121ae66 26
+docs/roles/code-reviewer.md
+  h_b98c004121ae66 15,17
+docs/roles/cr-architect.md
+  h_b98c004121ae66 24,30-31,102
+docs/roles/developer.md
+  h_b98c004121ae66 15,46,53
+docs/roles/planner.md
+  h_b98c004121ae66 17,32,37
+docs/roles/release-engineer.md
+  h_b98c004121ae66 17,32
+docs/roles/requirement-analyst.md
+  h_b98c004121ae66 17,32
+docs/roles/retro-facilitator.md
+  h_b98c004121ae66 8,16,19-20,35
+docs/roles/reviewer.md
+  h_b98c004121ae66 18,35
+docs/roles/risk-officer.md
+  h_b98c004121ae66 18,33
+docs/roles/tester.md
+  h_b98c004121ae66 19,35
+docs/templates/11-retro.md
+  h_b98c004121ae66 47
+packages/pi-code-review/README.md
+  h_b98c004121ae66 13-14,16
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 18,24
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 8,11,145-150,382
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5,8,13
+requirements/README.md
+  h_b98c004121ae66 5,19-32,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a49f16eef3897278bd825b9e77aa0ce88dd963c3",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
