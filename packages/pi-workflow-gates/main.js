@@ -665,12 +665,17 @@ const TOOLS = [
   },
 ];
 
+const DASHBOARD_COMMAND = "gwb.pi-workflow-gates.dashboard";
+
 async function onLoad() {
   for (const t of TOOLS) await pi.agent.registerTool(t);
+  // 面板打开入口：命令面板搜「需求看板」
+  await pi.commands.register({ id: DASHBOARD_COMMAND, title: "打开需求看板 / PI-Workflow Dashboard", run: () => pi.ui.openPanel() });
 }
 
 async function onUnload() {
   for (const t of TOOLS) await pi.agent.unregisterTool(t.name);
+  await pi.commands.unregister(DASHBOARD_COMMAND);
 }
 
 module.exports = { onLoad, onUnload };
