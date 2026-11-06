@@ -1,0 +1,28 @@
+.gitignore
+  h_b98c004121ae66 1
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 49
+docs/WORKFLOW.md
+  h_b98c004121ae66 66-67
+docs/templates/00-meta.md
+  h_b98c004121ae66 5
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 14-15
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 133-289,326-328,338,341-342,369,644-665
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5,211-250
+packages/pi-workflow-gates/renderer/index.html
+  h_b98c004121ae66 115-136,138-139,189,194,200,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ab6f1750929734fce4c209077faa6d49ffbad180",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
