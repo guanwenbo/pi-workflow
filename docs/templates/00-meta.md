@@ -2,6 +2,7 @@
 id: REQ-YYYYMMDD-<slug>
 title: <需求标题>
 status: draft
+dependsOn: []
 priority: <P0|P1|P2|P3>
 owner: <负责人>
 created: YYYY-MM-DD

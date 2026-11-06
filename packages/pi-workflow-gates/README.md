@@ -11,6 +11,8 @@ pi-workflow 的**机械层门禁插件**：把「建档 / 状态机 / 账本」�
 | `state_transition` | 状态流转：按状态机邻接表校验，非法流转物理拒绝；自动写 frontmatter + 状态变更日志 | medium |
 | `layer_scan` | 分层与域间依赖物理扫描（Java import 分析）：①下层调上层 ②域间直接调用（组装层豁免）③类级循环依赖；支持增量（传改动文件）、SPI 豁免（allow）、默认排除 src/test | low |
 | `chg_next` | 变更编号自增：读 CHANGES.md 返回最大 CHG-NN + 1 | low |
+| `registry_dep` | 跨项目依赖：add/remove/list，双写注册中心与档案 dependsOn，只告警不阻塞 | medium |
+| `registry_list` | 跨项目全景：所有项目需求按项目分组，含 blockedBy 未发布依赖 | low |
 | `metrics_record` | EP-07 账本：CR 轮次/返工次数/人工打回原因，写 `N = N-1 + 1` 可核算式；人工打回联动返工 +1 | medium |
 
 ## 文件操作范围（manifest fs 声明）

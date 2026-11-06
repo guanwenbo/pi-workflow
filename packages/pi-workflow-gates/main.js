@@ -130,6 +130,163 @@ function appendStatusLog(content, from, to, note) {
   return content.replace(/\s*$/, "") + "\n" + row + "\n";
 }
 
+// ---------- 跨项目注册中心（方案 C） ----------
+// 存储：插件自己的数据目录（pi.plugin.getDataPath()），天然跨工作区共享；
+// 镜像：每次变更同时写当前工作区的 requirements/.registry.json（面板只读它，不碰插件数据目录）。
+// 语义：各项目的 00-meta.md 是唯一权威；注册中心是「镜像 + 跨项目关系层」，只告警不阻塞。
+
+const MIRROR_PATH = "requirements/.registry.json";
+const DONE_STATES = new Set(["released", "archived"]);
+
+async function registryFile() {
+  const dataPath = await pi.plugin.getDataPath();
+  return `${dataPath}/registry.json`;
+}
+
+async function readRegistry() {
+  try {
+    const raw = await pi.fs.readText(await registryFile());
+    const reg = JSON.parse(raw);
+    if (reg && reg.requirements && typeof reg.requirements === "object") return reg;
+  } catch { /* 不存在或损坏则重建 */ }
+  return { version: 1, requirements: {} };
+}
+
+async function writeRegistry(reg) {
+  reg.updatedAt = new Date().toISOString();
+  const raw = JSON.stringify(reg, null, 2);
+  await pi.fs.writeText(await registryFile(), raw);
+  // 镜像到所有已登记项目的工作区（面板读这里；跨项目视图才一致）。
+  // pi.fs 以当前工作区为根，跨项目写须走绝对路径——宿主网关按 manifest fs.write 范围放行。
+  const seen = new Set();
+  for (const r of Object.values(reg.requirements)) {
+    if (r.projectRoot && !seen.has(r.projectRoot)) {
+      seen.add(r.projectRoot);
+      try { await pi.fs.writeText(`${r.projectRoot}/${MIRROR_PATH}`, raw); } catch { /* 该项目当前不可写则跳过 */ }
+    }
+  }
+  // 兜底：当前工作区（无登记项目根时也尽量留一份）
+  try { await pi.fs.writeText(MIRROR_PATH, raw); } catch { /* best-effort */ }
+}
+/** 取当前工作区项目标识（名 + 根路径） */
+async function currentProject() {
+  try {
+    const ws = await pi.workspace.get();
+    const root = ws && (ws.path || ws.root || "");
+    const name = root ? root.split("/").filter(Boolean).pop() : "unknown";
+    return { name, root };
+  } catch {
+    return { name: "unknown", root: "" };
+  }
+}
+
+async function registryRegister(reqId, extra) {
+  const reg = await readRegistry();
+  const proj = await currentProject();
+  const existed = reg.requirements[reqId];
+  reg.requirements[reqId] = {
+    project: proj.name,
+    projectRoot: proj.root,
+    status: (extra && extra.status) || "draft",
+    title: (extra && extra.title) || "",
+    dependsOn: (existed && existed.dependsOn) || [],
+    registeredAt: (existed && existed.registeredAt) || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeRegistry(reg);
+  return reg.requirements[reqId];
+}
+
+async function registryMirrorStatus(reqId, status) {
+  const reg = await readRegistry();
+  if (!reg.requirements[reqId]) return false; // 未登记的老档案不强制
+  reg.requirements[reqId].status = status;
+  reg.requirements[reqId].updatedAt = new Date().toISOString();
+  await writeRegistry(reg);
+  return true;
+}
+
+/** 读 00-meta.md frontmatter 的 dependsOn 数组 */
+function parseDependsOn(content) {
+  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return [];
+  const line = m[1].split("\n").find(l => /^dependsOn\s*:/.test(l.trim()));
+  if (!line) return [];
+  const raw = line.split(":").slice(1).join(":").trim();
+  const arr = raw.match(/^\[(.*)\]$/);
+  if (!arr) return [];
+  return arr[1].split(",").map(s => s.trim()).filter(Boolean);
+}
+
+/** 回写 dependsOn 到 frontmatter（无前则插到 status 行后） */
+function setDependsOn(content, deps) {
+  const line = `dependsOn: [${deps.join(", ")}]`;
+  if (/^dependsOn\s*:/m.test(content)) {
+    return content.replace(/^dependsOn\s*:.*$/m, line);
+  }
+  return content.replace(/^(status\s*:.*)$/m, `$1\n${line}`);
+}
+
+/** 依赖告警（只告警不阻塞）：依赖项未 released/archived 即提醒 */
+async function depWarnings(reqId) {
+  const reg = await readRegistry();
+  const me = reg.requirements[reqId];
+  if (!me || !me.dependsOn.length) return [];
+  return me.dependsOn
+    .map(depId => ({ depId, dep: reg.requirements[depId] }))
+    .filter(x => x.dep && !DONE_STATES.has(x.dep.status))
+    .map(x => `依赖的 ${x.depId}（${x.dep.project}）当前状态 ${x.dep.status}，尚未发布——请人工把控节奏`);
+}
+
+async function registryDep(args) {
+  const { reqId, action, depReqId } = args || {};
+  if (!reqId || !action) throw new Error("缺少必填参数：reqId / action（add | remove | list）");
+  const reg = await readRegistry();
+  const me = reg.requirements[reqId];
+  if (!me) throw new Error(`${reqId} 未在注册中心登记（请先在该项目用 /req-new 建档或确认插件已升级）`);
+
+  if (action === "list") {
+    const deps = (me.dependsOn || []).map(depId => {
+      const d = reg.requirements[depId];
+      return { reqId: depId, project: d ? d.project : "未登记", status: d ? d.status : "未知", done: d ? DONE_STATES.has(d.status) : false };
+    });
+    return { ok: true, reqId, dependsOn: deps };
+  }
+
+  if (!depReqId) throw new Error(`action=${action} 缺少 depReqId`);
+  if (!reg.requirements[depReqId]) throw new Error(`被依赖的 ${depReqId} 未在注册中心登记（先在被依赖项目里建档/登记）`);
+  if (depReqId === reqId) throw new Error("不允许依赖自己");
+
+  const deps = new Set(me.dependsOn || []);
+  if (action === "add") deps.add(depReqId);
+  else if (action === "remove") deps.delete(depReqId);
+  else throw new Error(`非法 action：${action}（add | remove | list）`);
+  me.dependsOn = [...deps].sort();
+  me.updatedAt = new Date().toISOString();
+
+  // 双写：档案 frontmatter 同步（档案自包含可独立阅读）
+  const content = await readMeta(reqId);
+  await pi.fs.writeText(metaPath(reqId), setDependsOn(content, me.dependsOn));
+  await writeRegistry(reg);
+
+  const warnings = await depWarnings(reqId);
+  return { ok: true, reqId, action, dependsOn: me.dependsOn, warnings };
+}
+
+async function registryList() {
+  const reg = await readRegistry();
+  const items = Object.entries(reg.requirements).map(([reqId, r]) => ({
+    reqId, ...r, done: DONE_STATES.has(r.status),
+    blockedBy: (r.dependsOn || []).filter(d => {
+      const dep = reg.requirements[d];
+      return dep && !DONE_STATES.has(dep.status);
+    }),
+  }));
+  const byProject = {};
+  for (const it of items) (byProject[it.project] = byProject[it.project] || []).push(it);
+  return { ok: true, total: items.length, updatedAt: reg.updatedAt || null, byProject, items };
+}
+
 // ---------- 四个工具 ----------
 
 async function reqInit(args) {
@@ -166,6 +323,9 @@ async function reqInit(args) {
   await pi.fs.writeText(`${dir}/01-intake.md`, intakeTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
   await pi.fs.writeText(`${dir}/SUMMARY.md`, summaryTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
 
+  // 建档即登记进跨项目注册中心（编号全局唯一由此保证）
+  await registryRegister(reqId, { status: "draft", title });
+
   return { ok: true, reqId, dir, status: "draft", files: ["00-meta.md", "01-intake.md", "SUMMARY.md"] };
 }
 
@@ -175,10 +335,11 @@ async function stateCheck(args) {
   const gate = GATES[command];
   if (!gate) throw new Error(`未知命令：${command}（可选：${Object.keys(GATES).join(" / ")}）`);
   const status = parseStatus(await readMeta(reqId));
+  const warnings = await depWarnings(reqId);
   const ok = gate.expect.includes("*") || gate.expect.includes(status);
   return ok
-    ? { ok: true, reqId, command, status }
-    : { ok: false, reqId, command, status, expected: gate.expect, hint: gate.hint };
+    ? { ok: true, reqId, command, status, warnings }
+    : { ok: false, reqId, command, status, expected: gate.expect, hint: gate.hint, warnings };
 }
 
 async function stateTransition(args) {
@@ -205,6 +366,7 @@ async function stateTransition(args) {
   content = setFrontmatter(content, "updated", today());
   content = appendStatusLog(content, from, to, note);
   await pi.fs.writeText(metaPath(reqId), content);
+  await registryMirrorStatus(reqId, to); // 镜像到注册中心（跨项目视图）
   return { ok: true, reqId, from, to, updated: today() };
 }
 
@@ -478,6 +640,28 @@ const TOOLS = [
       required: ["reqId"],
     },
     execute: chgNext,
+  },
+  {
+    name: "registry_dep",
+    description: "跨项目依赖管理（只告警不阻塞）：add 建立 REQ 间依赖（双写注册中心与本档案 frontmatter dependsOn），remove 移除，list 查看依赖及其最新状态。返回 warnings 列出尚未发布的依赖项，供人工把控节奏。",
+    risk: "medium",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号 REQ-YYYYMMDD-<slug>" },
+        action: { type: "string", enum: ["add", "remove", "list"], description: "操作类型" },
+        depReqId: { type: "string", description: "被依赖的需求编号（add/remove 必填；对方须已在注册中心登记）" },
+      },
+      required: ["reqId", "action"],
+    },
+    execute: registryDep,
+  },
+  {
+    name: "registry_list",
+    description: "跨项目需求全景：返回注册中心里所有项目的需求（按项目分组，含状态、dependsOn、blockedBy 未发布依赖）。面板与父 Agent 用来掌握跨项目节奏。",
+    risk: "low",
+    schema: { type: "object", properties: {} },
+    execute: registryList,
   },
 ];
 

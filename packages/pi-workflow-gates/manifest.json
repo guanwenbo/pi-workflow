@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gwb.pi-workflow-gates",
   "name": "PI-Workflow Gates",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "pi-workflow 机械层门禁：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）。门禁由代码物理执行。",
   "main": "main.js",
   "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。不修改代码文件，不删任何文件，不执行进程，不访问网络。",
@@ -207,6 +207,46 @@
           "required": [
             "reqId"
           ]
+        }
+      },
+      {
+        "name": "registry_dep",
+        "description": "跨项目依赖管理（只告警不阻塞）：add 建立 REQ 间依赖（双写注册中心与本档案 frontmatter dependsOn），remove 移除，list 查看依赖及其最新状态。返回 warnings 列出尚未发布的依赖项，供人工把控节奏。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": {
+              "type": "string",
+              "description": "需求编号 REQ-YYYYMMDD-<slug>"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "add",
+                "remove",
+                "list"
+              ],
+              "description": "操作类型"
+            },
+            "depReqId": {
+              "type": "string",
+              "description": "被依赖的需求编号（add/remove 必填；对方须已在注册中心登记）"
+            }
+          },
+          "required": [
+            "reqId",
+            "action"
+          ]
+        }
+      },
+      {
+        "name": "registry_list",
+        "description": "跨项目需求全景：返回注册中心里所有项目的需求（按项目分组，含状态、dependsOn、blockedBy 未发布依赖）。面板与父 Agent 用来掌握跨项目节奏。",
+        "risk": "low",
+        "schema": {
+          "type": "object",
+          "properties": {}
         }
       }
     ]

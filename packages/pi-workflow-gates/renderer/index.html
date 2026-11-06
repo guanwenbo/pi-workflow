@@ -112,7 +112,31 @@
       .map(cols => ({ time: cols[0], from: cols[1], to: cols[2], by: cols[3], note: cols[4] }));
   }
 
+  // 优先读跨项目注册中心镜像（插件每次变更时同步写入本工作区）
+  async function loadRegistryMirror() {
+    try {
+      const raw = await bridge.call("fs.readText", "requirements/.registry.json");
+      const reg = JSON.parse(raw);
+      if (!reg || !reg.requirements) return null;
+      return Object.entries(reg.requirements).map(([reqId, r]) => {
+        const blockedBy = (r.dependsOn || []).filter(d => {
+          const dep = reg.requirements[d];
+          return dep && !["released", "archived"].includes(dep.status);
+        });
+        return {
+          id: reqId, title: r.title || "-", status: r.status || "draft",
+          project: r.project || "-", owner: "-", updated: (r.updatedAt || "").slice(0, 10),
+          cr: "-", rework: "-", logs: [],
+          depCount: (r.dependsOn || []).length,
+          depWarn: blockedBy.length ? "依赖未发布：" + blockedBy.join("、") : null,
+        };
+      });
+    } catch (e) { return null; }
+  }
+
   async function loadAll() {
+    const mirror = await loadRegistryMirror();
+    if (mirror && mirror.length) return mirror;
     let entries;
     try {
       entries = await bridge.call("fs.glob", "requirements/REQ-*/00-meta.md");
@@ -162,18 +186,20 @@
     const rows = applyFilter(allRows, currentFilter);
     const content = document.getElementById("content");
     if (!rows.length) {
-      content.innerHTML = `<div class="empty">当前过滤条件下没有需求档案。<br/>用 /req-new 创建第一个需求。</div>`;
+      content.innerHTML = `<div class="empty">当前过滤条件下没有需求。<br/>用 /req-new 建档（会自动登记进跨项目注册中心）。</div>`;
       return;
     }
     content.innerHTML = `<table>
       <thead><tr>
-        <th>编号</th><th>标题</th><th>状态</th><th>负责人</th>
+        <th>编号</th><th>标题</th><th>项目</th><th>状态</th><th>依赖</th><th>负责人</th>
         <th style="text-align:right">CR轮次</th><th style="text-align:right">返工</th><th>更新</th>
       </tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-i="${allRows.indexOf(r)}">
         <td class="id">${esc(r.id)}</td>
         <td class="title" title="${esc(r.title)}">${esc(r.title)}</td>
+        <td>${esc(r.project || "-")}</td>
         <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
+        <td>${r.depWarn ? `<span class="badge change-requested" title="${esc(r.depWarn)}">⚠ 依赖未发布</span>` : (r.depCount ? esc(r.depCount + " 项") : "-")}</td>
         <td>${esc(r.owner)}</td>
         <td class="num">${esc(r.cr)}</td>
         <td class="num ${parseInt(r.rework) > 0 ? "bad" : ""}">${esc(r.rework)}</td>
