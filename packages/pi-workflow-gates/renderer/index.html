@@ -70,6 +70,8 @@
 <script>
 (async () => {
   const bridge = window.pluginBridge;
+  // 面板窗口用 .call(channel, arg)，侧边栏视图用 .invoke(channel, args)——归一化
+  const call = (ch, arg) => bridge.invoke ? bridge.invoke(ch, arg ?? {}) : call(ch, arg);
   const FILTERS = [
     { key: "active", label: "进行中" },
     { key: "cr", label: "CR 阶段" },
@@ -83,7 +85,7 @@
   let allRows = [];
   let currentFilter = "active";
 
-  const ws = await bridge.call("workspace.get").catch(() => null);
+  const ws = await call("workspace.get").catch(() => null);
   document.getElementById("wsMeta").textContent = ws && ws.path ? ws.path : "当前工作区";
 
   function parseFrontmatter(content) {
@@ -115,7 +117,7 @@
   // 优先读跨项目注册中心镜像（插件每次变更时同步写入本工作区）
   async function loadRegistryMirror() {
     try {
-      const raw = await bridge.call("fs.readText", "requirements/.registry.json");
+      const raw = await call("fs.readText", "requirements/.registry.json");
       const reg = JSON.parse(raw);
       if (!reg || !reg.requirements) return null;
       return Object.entries(reg.requirements).map(([reqId, r]) => {
@@ -139,10 +141,10 @@
     if (mirror && mirror.length) return mirror;
     let entries;
     try {
-      entries = await bridge.call("fs.glob", "requirements/REQ-*/00-meta.md");
+      entries = await call("fs.glob", "requirements/REQ-*/00-meta.md");
     } catch (e) {
       try {
-        const list = await bridge.call("fs.list", "requirements");
+        const list = await call("fs.list", "requirements");
         entries = [];
         for (const e of list) {
           if (e.isDirectory && e.name.startsWith("REQ-")) entries.push(`requirements/${e.name}/00-meta.md`);
@@ -152,7 +154,7 @@
     const rows = [];
     for (const p of entries) {
       try {
-        const content = await bridge.call("fs.readText", p);
+        const content = await call("fs.readText", p);
         const fm = parseFrontmatter(content);
         const dir = p.split("/").slice(0, -1).join("/");
         rows.push({
