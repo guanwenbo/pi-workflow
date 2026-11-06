@@ -269,7 +269,7 @@
           "en": "Requirements",
           "zh-CN": "需求看板"
         },
-        "icon": "kanban",
+        "icon": "book",
         "entry": "renderer/index.html",
         "order": 45
       }
