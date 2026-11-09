@@ -1,0 +1,16 @@
+scripts/release.sh
+  h_b98c004121ae66 87-88,95
+scripts/releases-backfill.sh
+  h_b98c004121ae66 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "86de02c10854a0e1bcd8ff37777cdd91a5c7857b",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
