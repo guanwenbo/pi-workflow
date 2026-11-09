@@ -1,0 +1,24 @@
+README.md
+  h_b98c004121ae66 28
+docs/WORKFLOW.md
+  h_b98c004121ae66 29-31
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 17
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 155,877-957,1087,1125-1131
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6,8
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 25-28,55-59,83-87,93-112,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c8e5ed8bda6da55bd0f692dc8a5ce754eee96c56",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
