@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gwb.pi-workflow-gates",
   "name": "PI-Workflow Gates",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "pi-workflow 机械层门禁：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）。门禁由代码物理执行。",
   "main": "main.js",
   "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。不修改代码文件，不删任何文件，不执行进程，不访问网络。",

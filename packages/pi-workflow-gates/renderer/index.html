@@ -154,6 +154,9 @@ body {
   animation-delay: calc(var(--i, 0) * 24ms);
 }
 .row:last-child { border-bottom: none; }
+.row.sub { padding-left: 30px; background: var(--card-2); border-left: 2px solid var(--accent-border); }
+.row.sub:hover { background: var(--hover); }
+.side-tag { font-family: var(--mono); font-size: 10.5px; color: var(--accent-fg); background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 4px; padding: 0 5px; margin-right: 7px; }
 .row:hover { background: var(--hover); }
 .row:active { background: var(--sel); }
 .row.selected { background: var(--sel); box-shadow: inset 3px 0 0 var(--accent); }
@@ -381,6 +384,54 @@ body {
       + '<span class="cell c-date" title="' + esc(fmtDateTime(r.updatedAt)) + '">' + esc(fmtDate(r.updatedAt)) + '</span>'
       + '</div>';
   }
+  /* 跨项目需求组卡片：有关联（dependsOn/blockedBy）的多侧需求聚成一张父卡片，子需求缩进列出 */
+  function reqGroupHtml(g, gi) {
+    var members = g.members.slice().sort(function (a, b) {
+      return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+    });
+    if (!g.isLinked) {
+      // 单需求：沿用项目组卡片样式，组名取项目名
+      var it = members[0];
+      var proj = it.project || "（未标项目）";
+      return '<section class="group" style="--gi:' + Math.min(gi, 6) + '" aria-label="' + esc(proj) + '">'
+        + '<header class="group-head"><span class="group-name">' + esc(proj) + '</span>'
+        + '<span class="group-count">1</span>'
+        + (proj === currentProject ? '<span class="chip-current">当前项目</span>' : '') + '</header>'
+        + rowHtml(it, 0) + '</section>';
+    }
+    // 关联组：父卡片 + 子需求缩进
+    var parent = members.filter(function (m) { return (m.dependsOn || []).length > 0; })[0] || members[0];
+    var title = parent.title || parent.reqId;
+    var doneCount = members.filter(function (m) { return m.done; }).length;
+    var blockedCount = members.reduce(function (acc, m) { return acc + ((m.blockedBy || []).length ? 1 : 0); }, 0);
+    var aggBadge = blockedCount > 0
+      ? '<span class="dep dep-bad">⚠ ' + blockedCount + ' 侧被依赖卡住</span>'
+      : '<span class="dep dep-ok">✓ ' + doneCount + '/' + members.length + ' 已发布</span>';
+    var rows = members.map(function (m, i) {
+      var side = m.project || "（未标项目）";
+      return '<div class="row sub" data-reqid="' + esc(m.reqId) + '" tabindex="0" role="button" aria-pressed="' + (selectedId === m.reqId ? "true" : "false") + '" style="--i:' + Math.min(i, 12) + '">'
+        + '<span class="cell c-id" title="' + esc(m.reqId) + '">' + esc(m.reqId) + '</span>'
+        + '<span class="cell c-title" title="' + esc(m.title) + '"><span class="side-tag">' + esc(side) + '</span>' + esc(m.title) + '</span>'
+        + '<span class="cell c-status">' + badgeHtml(m.status) + '</span>'
+        + '<span class="cell c-dep">' + depHtml(m) + '</span>'
+        + '<span class="cell c-done">' + doneHtml(m) + '</span>'
+        + '<span class="cell c-date" title="' + esc(fmtDateTime(m.updatedAt)) + '">' + esc(fmtDate(m.updatedAt)) + '</span>'
+        + '</div>';
+    }).join("");
+    return '<section class="group linked" style="--gi:' + Math.min(gi, 6) + '" aria-label="关联需求组">'
+      + '<header class="group-head">'
+      + '<span class="group-name">' + esc(title) + '</span>'
+      + '<span class="group-count">' + members.length + ' 侧</span>'
+      + aggBadge
+      + '</header>'
+      + '<div class="row head" aria-hidden="true">'
+      + '<span class="cell c-id">编号</span><span class="cell c-title">标题（侧·项目）</span><span class="cell c-status">状态</span>'
+      + '<span class="cell c-dep">依赖</span><span class="cell c-done">完成</span><span class="cell c-date">更新</span>'
+      + '</div>'
+      + rows
+      + '</section>';
+  }
+
   function groupHtml(proj, list, gi) {
     var sorted = list.slice().sort(function (a, b) {
       return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
@@ -433,17 +484,39 @@ body {
       });
       return;
     }
-    var byProject = {};
+    // 跨项目需求组聚合：把通过 dependsOn 关联（或被关联）的需求聚成一张父卡片，
+    // 父卡片内缩进列出各侧子需求；无关联的需求仍单独成行。
+    var byId = {};
+    allItems.forEach(function (it) { byId[it.reqId] = it; });
+    // 并查集：把直接/间接关联的 reqId 归到一组
+    var parent = {};
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    function union(a, b) { parent[find(a)] = find(b); }
+    items.forEach(function (it) { parent[it.reqId] = it.reqId; });
     items.forEach(function (it) {
-      var p = it.project || "（未标项目）";
-      (byProject[p] = byProject[p] || []).push(it);
+      (it.dependsOn || []).forEach(function (d) { if (parent[d] !== undefined) union(it.reqId, d); });
+      (it.blockedBy || []).forEach(function (d) { if (parent[d] !== undefined) union(it.reqId, d); });
     });
-    var projects = Object.keys(byProject).sort(function (a, b) {
-      if (a === currentProject) return -1;
-      if (b === currentProject) return 1;
-      return a < b ? -1 : 1;
+    var groups = {};
+    items.forEach(function (it) {
+      var root = find(it.reqId);
+      (groups[root] = groups[root] || []).push(it);
     });
-    content.innerHTML = projects.map(function (p, gi) { return groupHtml(p, byProject[p], gi); }).join("");
+    var groupList = Object.keys(groups).map(function (root) {
+      var members = groups[root];
+      return { root: root, members: members, isLinked: members.length > 1 };
+    });
+    // 排序：含当前项目的组优先，其次有关联的组，再按组内最新更新
+    groupList.sort(function (g1, g2) {
+      function hasCur(g) { return g.members.some(function (m) { return m.project === currentProject; }); }
+      var c1 = hasCur(g1) ? 0 : 1, c2 = hasCur(g2) ? 0 : 1;
+      if (c1 !== c2) return c1 - c2;
+      if (g1.isLinked !== g2.isLinked) return g1.isLinked ? -1 : 1;
+      var t1 = Math.max.apply(null, g1.members.map(function (m) { return new Date(m.updatedAt || 0).getTime(); }));
+      var t2 = Math.max.apply(null, g2.members.map(function (m) { return new Date(m.updatedAt || 0).getTime(); }));
+      return t2 - t1;
+    });
+    content.innerHTML = groupList.map(function (g, gi) { return reqGroupHtml(g, gi); }).join("");
   }
 
   function renderError(e) {
