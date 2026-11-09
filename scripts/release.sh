@@ -84,13 +84,14 @@ echo "✓ 已打 tag 并推送：$TAG"
 
 # 7) GitHub Release + 附件（使用方只装这里的东西）
 if gh auth status >/dev/null 2>&1; then
-  gh release create "$TAG" "$ASSET" \
+  # 附件两件：.piplug（安装用）+ latest.json（更新检查的权威源，releases/latest/download/latest.json）
+  gh release create "$TAG" "$ASSET" "$PKG/latest.json" \
     --title "PI-Workflow Gates $TAG" \
     --notes "安装：Plugins 页面 → Install package → 选 $ID-$version.piplug；或让已装旧版的用户执行命令「检查插件更新」。"
   echo "✓ Release 已创建：https://github.com/$REPO/releases/tag/$TAG"
 else
   echo "⚠ gh 未登录，Release 未创建。执行以下命令补建（只需一次登录）：" >&2
   echo "  gh auth login -h github.com" >&2
-  echo "  gh release create $TAG \"$ASSET\" --title \"PI-Workflow Gates $TAG\" --notes \"装 tag $TAG 版本\"" >&2
+  echo "  gh release create $TAG \"$ASSET\" \"$PKG/latest.json\" --title \"PI-Workflow Gates $TAG\" --notes \"装 tag $TAG 版本\"" >&2
   exit 2
 fi
