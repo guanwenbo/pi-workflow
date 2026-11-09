@@ -29,6 +29,8 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | 命令 | 阶段 | 角色 Agent | 核心产出 |
 |---|---|---|---|
 | `/req-new <需求名>` | 需求承接 | 父 Agent 自执行 | 00-meta.md、01-intake.md |
+| `/req-adopt <目标仓路径>` | 接入（任意阶段前置） | 父 Agent 自执行 | 目标仓具备 `.pi/commands` + `docs/` + `requirements/` |
+| `/req-derive <本仓REQ> to <目标仓>` | 跨项目承接（派生） | 父 Agent 自执行 | 本仓 `derive/` 简报、目标仓 `.inbox/` 简报、父需求 dependsOn |
 | `/req-clarify` | 需求澄清 | 需求分析师 | 02-clarification.md（边界+AC） |
 | `/design` | 方案设计（含测试计划） | 架构设计师 + 测试工程师 | 03-design.md（DDD+三层映射）、08-test-plan.md |
 | `/review` | 评审 + 人工复审 | 评审员 | 04-review.md；人工确认 → confirmed |

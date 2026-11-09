@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "gwb.pi-workflow-gates",
   "name": "PI-Workflow Gates",
-  "version": "0.8.1",
-  "description": "pi-workflow 机械层门禁：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）。门禁由代码物理执行。",
+  "version": "0.9.0",
+  "description": "pi-workflow 机械层门禁与跨项目承接：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）、跨项目依赖（registry_dep/registry_list）、一键接入新仓（adopt_project）、跨项目派生承接（req_derive）。门禁由代码物理执行。",
   "main": "main.js",
-  "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。不修改代码文件，不删任何文件，不执行进程，不访问网络。",
+  "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。adopt_project / req_derive 会按显式目标路径写入另一个本地 git 仓库（同步命令与文档、投放承接简报），执行前会校验目标路径与接入状态，不删业务文件、不执行进程、不访问网络。",
   "contributes": {
     "agentTools": [
       {
@@ -247,6 +247,68 @@
         "schema": {
           "type": "object",
           "properties": {}
+        }
+      },
+      {
+        "name": "adopt_project",
+        "description": "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
+        "risk": "high",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "projectPath": {
+              "type": "string",
+              "description": "目标仓绝对路径（必须是已有 .git 的 git 仓库）"
+            },
+            "sourceRoot": {
+              "type": "string",
+              "description": "工作流源资产根（含 .pi/commands 与 docs/templates 的仓根）；缺省自动探测插件内嵌脚手架 / 当前仓库"
+            }
+          },
+          "required": [
+            "projectPath"
+          ]
+        }
+      },
+      {
+        "name": "req_derive",
+        "description": "跨项目承接（派生需求）：本仓父需求发起到目标仓的子需求承接。校验目标仓已接入 → 生成建档简报（本仓留档 + 目标仓 requirements/.inbox/）→ 父需求 dependsOn 挂到派生子需求（只告警不阻塞）→ 回填本仓 01-intake 的「跨项目承接记录」。幂等：同一父需求 + 同一目标仓重跑复用已派生编号。不在目标仓直接建档——建档由目标仓 agent 用 /req-new 接力。",
+        "risk": "medium",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "reqId": {
+              "type": "string",
+              "description": "本仓父需求编号 REQ-YYYYMMDD-<slug>"
+            },
+            "targetProject": {
+              "type": "string",
+              "description": "目标仓绝对路径，或注册中心里已登记的仓名（支持片段匹配）"
+            },
+            "title": {
+              "type": "string",
+              "description": "派生子需求标题；缺省「<父需求标题>（<目标仓> 侧）」"
+            },
+            "slug": {
+              "type": "string",
+              "description": "派生子需求 slug；缺省由父 slug + 目标仓名生成"
+            },
+            "note": {
+              "type": "string",
+              "description": "交给目标仓承接的范围（接口/能力边界），写入简报"
+            },
+            "questions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "待目标仓答复的待定项，写入简报 Q 清单"
+            }
+          },
+          "required": [
+            "reqId",
+            "targetProject"
+          ]
         }
       }
     ],

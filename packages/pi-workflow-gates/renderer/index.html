@@ -143,6 +143,30 @@ body {
 .group-head .chev { color: var(--dim); flex: none; transition: transform 150ms ease-out; }
 .group-head .chev.open { transform: rotate(90deg); }
 .group-body[hidden] { display: none; }
+/* 派生子需求：父卡片头的轻量动作按钮 + 底部提示条（复制命令用，不直接改数据） */
+.derive-btn {
+  margin-left: auto; flex: none; font: inherit; font-size: 12px; line-height: 1;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  color: var(--accent-fg); background: var(--accent-soft); border: 1px solid var(--accent-border);
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+.derive-btn:hover { background: var(--sel); border-color: var(--focus); }
+.derive-btn:active { transform: translateY(1px); }
+.derive-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#toast {
+  position: fixed; left: 50%; bottom: 16px; z-index: 50;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--text); color: var(--bg);
+  font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+  box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+  transform: translateX(-50%) translateY(8px);
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .derive-btn, #toast { transition: none; }
+}
 .chip-current {
   font-size: 10.5px; font-weight: 600; line-height: 16px; padding: 0 7px; border-radius: 999px;
   color: var(--accent-fg); background: var(--accent-soft); border: 1px solid var(--accent-border);
@@ -282,6 +306,7 @@ body {
   </header>
   <nav class="filters" id="filters" role="tablist" aria-label="状态过滤"></nav>
   <main id="content" aria-live="polite"></main>
+  <div id="toast" role="status" aria-live="polite"></div>
 </div>
 
 <script>
@@ -432,6 +457,7 @@ body {
       + '<span class="group-name">' + esc(title) + '</span>'
       + '<span class="group-count">' + members.length + ' 侧</span>'
       + aggBadge
+      + '<button type="button" class="derive-btn" data-derive="' + esc(parent.reqId) + '" title="生成 /req-derive 命令并复制：把子需求派生到另一个仓">+ 派生子需求</button>'
       + '</header>'
       + '<div class="group-body"' + (expanded ? '' : ' hidden') + '>'
       + '<div class="row head" aria-hidden="true">'
@@ -619,6 +645,20 @@ body {
   content.addEventListener("click", function (e) {
     var t = e.target;
     if (!t || typeof t.closest !== "function") return;
+    // 派生子需求：看板只读，不直接改数据——复制 /req-derive 命令，由 Agent 侧执行（工具会做校验与依赖双写）
+    var deriveBtn = t.closest("[data-derive]");
+    if (deriveBtn) {
+      var pReqId = deriveBtn.getAttribute("data-derive");
+      var cmd = "/req-derive " + pReqId + " to ";
+      copyText(cmd, function (ok) {
+        showToast(
+          ok
+            ? "已复制：" + cmd + "\n粘贴到输入框后补上目标仓名或绝对路径（目标仓须已 /req-adopt 接入）"
+            : "请手动复制：" + cmd + "\n（粘贴后补上目标仓名或绝对路径）"
+        );
+      });
+      return;
+    }
     var act = t.closest("[data-action]");
     if (act) {
       var a = act.getAttribute("data-action");
@@ -651,6 +691,36 @@ body {
     e.preventDefault();
     selectRow(row.getAttribute("data-reqid"));
   });
+  /* ---------- 轻量反馈：复制命令 + 底部提示条 ---------- */
+  var toastTimer = 0;
+  function showToast(msg) {
+    var el = $("toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 4200);
+  }
+  /** 复制文本：webview 里 navigator.clipboard 可能被拒，退回 textarea + execCommand */
+  function copyText(text, done) {
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        done(!!ok);
+      } catch (err) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else fallback();
+  }
   $("refresh-btn").addEventListener("click", load);
 
   /* ---------- 启动 ---------- */

@@ -50,7 +50,8 @@ const FLOW = {
   "released": ["archived"],
   "archived": [],
   "blocked": ["*"], // 解除阻塞可回任意状态，须 note 说明
-  "change-requested": ["clarified", "designing", "developing", "cr-agent", "testing", "ready-release", "released", "planned"],
+  // patched 2026-11-09：变更审批通过后允许回流 clarifying（原邻接表漏 clarifying，导致 change-requested → clarifying 被物理拒绝）
+  "change-requested": ["clarifying", "clarified", "designing", "developing", "cr-agent", "testing", "ready-release", "released", "planned"],
 };
 
 const SIDE_STATES = ["blocked", "change-requested"]; // 任意状态 → 这两个状态恒允许（note 必填）
@@ -122,13 +123,21 @@ function setMetricRow(content, metric, value, remarkAppend) {
   return content.replace(re, `$1 ${value} | ${remark} |`);
 }
 
-/** 向「状态变更日志」表末尾追加一行 */
+/** 向「状态变更日志」表末尾追加一行（patched 2026-11-09：原实现把行追加到文件末尾而非表内） */
 function appendStatusLog(content, from, to, note) {
   if (!/^\|\s*时间\s*\|\s*从状态\s*\|/m.test(content)) {
     throw new Error("00-meta.md 缺少「状态变更日志」表");
   }
   const row = `| ${nowMinute()} | ${from} | ${to} | agent | ${note || "-"} |`;
-  return content.replace(/\s*$/, "") + "\n" + row + "\n";
+  const lines = content.split("\n");
+  const head = lines.findIndex(l => /^\|\s*时间\s*\|\s*从状态\s*\|/.test(l));
+  let last = head + 1;
+  for (let i = head + 1; i < lines.length; i++) {
+    if (/^\s*\|/.test(lines[i])) last = i;
+    else break;
+  }
+  lines.splice(last + 1, 0, row);
+  return lines.join("\n");
 }
 
 // ---------- 跨项目注册中心（方案 C） ----------
@@ -193,12 +202,14 @@ async function registryRegister(reqId, extra) {
   const proj = await currentProject();
   const existed = reg.requirements[reqId];
   reg.requirements[reqId] = {
+    ...(existed || {}), // 保留 derivedFrom / originProject 等派生标记（req_derive 的幂等键依赖它们）
     project: proj.name,
     projectRoot: proj.root,
     status: (extra && extra.status) || "draft",
     title: (extra && extra.title) || "",
     dependsOn: (existed && existed.dependsOn) || [],
     registeredAt: (existed && existed.registeredAt) || new Date().toISOString(),
+    awaitingCreate: false, // 建档动作本身即证明目标仓已有档案
     updatedAt: new Date().toISOString(),
   };
   await writeRegistry(reg);
@@ -281,6 +292,85 @@ async function registryDep(args) {
   return { ok: true, reqId, action, dependsOn: me.dependsOn, warnings };
 }
 
+// ---------- adopt_project：一键把目标仓接入 pi-workflow ----------
+// 跨工作区/目标仓的写入走原生 node:fs（pi.fs 网关只管当前工作区）。
+// 幂等：已接入则跳过；返回接入结果与需人工确认清单。
+
+async function adoptProject(args) {
+  const { projectPath } = args || {};
+  if (!projectPath) throw new Error("缺少必填参数：projectPath（目标仓绝对路径）");
+  if (!nodeFs.existsSync(projectPath)) throw new Error(`目标路径不存在：${projectPath}`);
+  if (!nodeFs.existsSync(nodePath.join(projectPath, ".git"))) throw new Error(`目标不是 git 仓库（无 .git）：${projectPath}`);
+
+  // 源资产：显式 sourceRoot / PI_WORKFLOW_HOME / 插件包内嵌脚手架（安装态）/ 仓库开发态
+  const srcRoot = resolveScaffoldRoot(args && args.sourceRoot, projectPath);
+  if (!srcRoot) {
+    throw new Error(
+      "找不到工作流源资产（需同时含 .pi/commands/req-new.md 与 docs/templates/00-meta.md）：" +
+      "请在 pi-workflow 仓内运行，或用 sourceRoot 指定仓库根，或设置 PI_WORKFLOW_HOME"
+    );
+  }
+  const checks = [];
+  const needConfirm = [];
+
+  // 0) 备份旧 docs（若目标仓已有 docs/ 且与源不同）
+  const targetDocs = nodePath.join(projectPath, "docs");
+  if (nodeFs.existsSync(targetDocs)) {
+    const backup = nodePath.join(projectPath, ".workflow-backup-docs-" + Date.now());
+    nodeFs.cpSync(targetDocs, backup, { recursive: true });
+    checks.push(`已备份旧 docs 到 ${nodePath.basename(backup)}`);
+    needConfirm.push(`旧 docs 已备份为 ${nodePath.basename(backup)}，确认无遗留后可删`);
+  }
+
+  // 1) 复制 .pi/commands
+  const srcCmd = nodePath.join(srcRoot, ".pi", "commands");
+  const dstCmd = nodePath.join(projectPath, ".pi", "commands");
+  nodeFs.mkdirSync(nodePath.dirname(dstCmd), { recursive: true });
+  nodeFs.cpSync(srcCmd, dstCmd, { recursive: true, force: true });
+  checks.push(".pi/commands 已同步（" + nodeFs.readdirSync(dstCmd).length + " 个命令）");
+
+  // 2) 复制 docs/（含 templates + 流程文档）
+  nodeFs.cpSync(nodePath.join(srcRoot, "docs"), targetDocs, { recursive: true, force: true });
+  checks.push("docs/ 已同步（含 templates）");
+
+  // 3) requirements/README.md
+  const reqDir = nodePath.join(projectPath, "requirements");
+  nodeFs.mkdirSync(reqDir, { recursive: true });
+  nodeFs.copyFileSync(nodePath.join(srcRoot, "requirements", "README.md"), nodePath.join(reqDir, "README.md"));
+  checks.push("requirements/README.md 已就位");
+
+  // 4) .gitignore 补镜像忽略
+  const gi = nodePath.join(projectPath, ".gitignore");
+  const giLine = "requirements/.registry.json";
+  let giContent = nodeFs.existsSync(gi) ? nodeFs.readFileSync(gi, "utf8") : "";
+  if (!giContent.split("\n").some(l => l.trim() === giLine)) {
+    nodeFs.appendFileSync(gi, (giContent.endsWith("\n") || !giContent ? "" : "\n") + giLine + "\n");
+    checks.push(".gitignore 已加 " + giLine);
+  } else {
+    checks.push(".gitignore 已含镜像忽略（跳过）");
+  }
+
+  // 5) 自检
+  const verify = [
+    nodePath.join(projectPath, "docs", "templates", "01-intake.md"),
+    nodePath.join(projectPath, "docs", "templates", "00-meta.md"),
+    nodePath.join(projectPath, ".pi", "commands", "req-new.md"),
+  ];
+  for (const f of verify) {
+    if (!nodeFs.existsSync(f)) throw new Error("自检失败，缺少：" + f);
+  }
+  checks.push("自检通过（templates + req-new 命令在位）");
+
+  return {
+    ok: true,
+    projectPath,
+    projectName: nodePath.basename(projectPath),
+    checks,
+    needConfirm,
+    next: "在该项目里用 /req-new 建档（会自动登记进跨项目注册中心）",
+  };
+}
+
 async function registryList() {
   const reg = await readRegistry();
   const items = Object.entries(reg.requirements).map(([reqId, r]) => ({
@@ -293,6 +383,244 @@ async function registryList() {
   const byProject = {};
   for (const it of items) (byProject[it.project] = byProject[it.project] || []).push(it);
   return { ok: true, total: items.length, updatedAt: reg.updatedAt || null, byProject, items };
+}
+
+// ---------- req_derive：本仓发起跨项目承接（派生需求） ----------
+// 动机：父需求在本仓、落地能力在另一个仓时，此前靠人工在多仓之间搬上下文。
+// 语义：本仓父需求 dependsOn 派生出的目标仓子需求（父等子交付）。依赖只告警不阻塞。
+// 边界：不在目标仓直接建档案——建档由目标仓 agent 用 /req-new 接力，避免跨仓双写冲突。
+
+/** 定位工作流源资产根（必须同时含 .pi/commands/req-new.md 与 docs/templates/00-meta.md） */
+function resolveScaffoldRoot(explicit, projectPath) {
+  const candidates = [];
+  if (explicit) candidates.push(nodePath.resolve(explicit));
+  if (process.env.PI_WORKFLOW_HOME) candidates.push(nodePath.resolve(process.env.PI_WORKFLOW_HOME));
+  candidates.push(nodePath.join(__dirname, "assets", "scaffold")); // 安装态：随插件包内嵌
+  candidates.push(nodePath.resolve(__dirname, "..", "..")); // 开发态：仓库根
+  if (projectPath) candidates.push(projectPath); // 兜底：目标仓本身即源资产
+  for (const c of candidates) {
+    const hasCmds = nodeFs.existsSync(nodePath.join(c, ".pi", "commands", "req-new.md"));
+    const hasTpl = nodeFs.existsSync(nodePath.join(c, "docs", "templates", "00-meta.md"));
+    if (hasCmds && hasTpl) return c;
+  }
+  return null;
+}
+
+/** 标题/编号 → 合法 slug（小写字母数字与连字符） */
+function slugify(input, max) {
+  return String(input || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, max || 40)
+    .replace(/-+$/g, "");
+}
+
+/** 目标仓解析：绝对路径直接用；否则按仓名（支持片段）在注册中心已登记项目里反查 */
+async function resolveTargetProject(target) {
+  if (!target) throw new Error("缺少必填参数：targetProject（目标仓绝对路径，或注册中心里已登记的仓名）");
+  const known = {};
+  for (const r of Object.values((await readRegistry()).requirements)) {
+    // 同一仓的多条需求共享同一根路径，取值重复覆盖无副作用
+    if (r.projectRoot && r.project) known[r.project] = r.projectRoot;
+  }
+  let root = "";
+  if (nodePath.isAbsolute(target)) root = nodePath.resolve(target);
+  else if (known[target]) root = known[target];
+  else {
+    const hit = Object.keys(known).filter(n => n.includes(target));
+    if (hit.length === 1) root = known[hit[0]];
+    else if (hit.length > 1) throw new Error(`目标仓名「${target}」有歧义：${hit.join(" / ")}——请写完整仓名或绝对路径`);
+    else {
+      throw new Error(
+        `找不到目标仓「${target}」：既不是已登记仓（${Object.keys(known).join(" / ") || "无"}），也不是绝对路径。` +
+          "请用绝对路径，或先在目标仓执行 /req-adopt"
+      );
+    }
+  }
+  if (!nodeFs.existsSync(root)) throw new Error(`目标仓路径不存在：${root}`);
+  const name = nodePath.basename(root);
+  const missing = [];
+  if (!nodeFs.existsSync(nodePath.join(root, "docs", "templates", "01-intake.md"))) missing.push("docs/templates/01-intake.md");
+  if (!nodeFs.existsSync(nodePath.join(root, ".pi", "commands", "req-new.md"))) missing.push(".pi/commands/req-new.md");
+  if (missing.length) {
+    throw new Error(`目标仓「${name}」尚未接入 pi-workflow（缺 ${missing.join("、")}）——请先执行 /req-adopt ${root}`);
+  }
+  return { name, root };
+}
+
+/** 幂等替换 markdown 二级小节：存在则整节替换，不存在则追加到文末 */
+function upsertSection(content, heading, body) {
+  const marker = `## ${heading}`;
+  const lines = content.split("\n");
+  const start = lines.findIndex(l => l.trim() === marker);
+  if (start >= 0) {
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^##\s+/.test(lines[i])) { end = i; break; }
+    }
+    const merged = [...lines.slice(0, start), marker, "", body.trim(), "", ...lines.slice(end)];
+    return merged.join("\n").replace(/\n{3,}/g, "\n\n");
+  }
+  return content.trimEnd() + `\n\n${marker}\n\n${body.trim()}\n`;
+}
+
+/** 建档简报：目标仓 agent 读它即可用 /req-new 接力建档 */
+function buildBriefing(ctx) {
+  const qs = ctx.questions.length
+    ? ctx.questions.map((q, i) => `- Q-${pad(i + 1)}：${q}`).join("\n")
+    : "- （暂无，由目标仓在 /req-clarify 中补齐）";
+  return `# 跨项目承接简报 — ${ctx.childTitle}
+
+> 本简报在本仓需求 ${ctx.parentReqId} 派生时自动生成。目标仓 agent 读完即可建档；父需求只记录依赖，不复制档案正文。
+
+## 派生关系
+
+| 项 | 值 |
+| --- | --- |
+| 父需求 | ${ctx.parentReqId}（${ctx.parentTitle}） |
+| 父需求所在仓 | ${ctx.originProject || "未知"} |
+| 派生需求编号 | ${ctx.childReqId} |
+| 目标仓 | ${ctx.target.name} |
+| 目标仓路径 | ${ctx.target.root} |
+| 依赖方向 | ${ctx.parentReqId} dependsOn ${ctx.childReqId}（父等子交付；只告警不阻塞，节奏人工把控） |
+
+## 目标仓建档指令
+
+在 ${ctx.target.name} 仓的 Agent 中执行 \`/req-new\`，标题用「${ctx.childTitle}」，slug 用 \`${ctx.childSlug}\`。
+
+预期编号为 \`${ctx.childReqId}\`；跨天建档会按当天日期重新生成编号，属正常。
+建档后确认 \`requirements/<编号>/00-meta.md\` 的 frontmatter 为 \`status: draft\`。
+
+## 需要目标仓承接的范围
+
+${(ctx.note || "（待补充：父需求交给目标仓的接口/能力边界）").trim()}
+
+## 待目标仓答复的问题
+
+${qs}
+
+## 建档后的回执
+
+1. 在目标仓执行 \`/req-clarify\` 澄清本子需求；
+2. 回到父需求仓，在本仓档案 \`01-intake.md\` 的「跨项目承接记录」核对状态（req_derive 自动维护）；
+3. 子需求 released 后，父需求的依赖告警自动消失。
+`;
+}
+
+async function reqDerive(args) {
+  const { reqId, targetProject, title, slug, note, questions } = args || {};
+  if (!reqId) throw new Error("缺少必填参数：reqId（本仓父需求编号）");
+  const parentMeta = await readMeta(reqId); // 档案不存在会直接抛「请先 /req-new 建档」
+  const target = await resolveTargetProject(targetProject);
+  const proj = await currentProject();
+  if (proj.root && nodePath.resolve(proj.root) === nodePath.resolve(target.root)) {
+    throw new Error(`派生目标与当前仓相同（${target.name}）——同仓拆分请用 /breakdown，跨仓承接才用 /req-derive`);
+  }
+
+  // 父需求标题取 frontmatter 的 title；缺省退回编号
+  const tm = parentMeta.match(/^---\n[\s\S]*?^title\s*:\s*(.*)$/m);
+  const parentTitle = tm ? tm[1].trim() : reqId;
+  const parentSlug = reqId.replace(/^REQ-\d{8}-/, "");
+  const childTitle = (title && String(title).trim()) || `${parentTitle}（${target.name} 侧）`;
+  const childSlug = (slug && String(slug).trim()) || slugify(`${parentSlug}-${target.name}`, 40);
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(childSlug)) {
+    throw new Error(`slug 非法：${childSlug}（小写字母/数字/连字符，如 order-api-provider）`);
+  }
+
+  const reg = await readRegistry();
+  if (!reg.requirements[reqId]) {
+    throw new Error(`${reqId} 未在跨项目注册中心登记——请先在本仓重新 /req-new 建档（或手工补登记）后再派生`);
+  }
+
+  // 幂等键 = 父需求 + 目标仓：跨天重跑复用已派生编号，不会产生重复子需求
+  const existedId = Object.keys(reg.requirements).find(
+    id => reg.requirements[id].derivedFrom === reqId && reg.requirements[id].project === target.name
+  );
+  const childReqId = existedId || `REQ-${todayCompact()}-${childSlug}`;
+  const childMetaAbs = nodePath.join(target.root, "requirements", childReqId, "00-meta.md");
+  const childAdopted = nodeFs.existsSync(childMetaAbs); // 目标仓 agent 是否已完成接力建档
+
+  const isNew = !reg.requirements[childReqId];
+  if (isNew) {
+    reg.requirements[childReqId] = {
+      project: target.name,
+      projectRoot: target.root,
+      status: "draft",
+      title: childTitle,
+      dependsOn: [],
+      derivedFrom: reqId, // 幂等键之一
+      originProject: proj.name, // 父需求所在仓（简报与看板都要用）
+      awaitingCreate: !childAdopted,
+      registeredAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    reg.requirements[childReqId].awaitingCreate = !childAdopted;
+    reg.requirements[childReqId].updatedAt = new Date().toISOString();
+  }
+
+  // 依赖双写：注册中心 + 本仓 frontmatter（父 → 子，语义为父等子）
+  const deps = [...new Set([...parseDependsOn(parentMeta), childReqId])].sort();
+  await pi.fs.writeText(metaPath(reqId), setDependsOn(parentMeta, deps));
+  reg.requirements[reqId].dependsOn = deps;
+  reg.requirements[reqId].updatedAt = new Date().toISOString();
+  await writeRegistry(reg);
+
+  // 简报双份：本仓留档（可追可读）+ 目标仓 inbox（目标仓 agent 的接力入口）
+  const qs = (Array.isArray(questions) ? questions : []).map(q => String(q).trim()).filter(Boolean);
+  const briefing = buildBriefing({
+    parentReqId: reqId, parentTitle, originProject: proj.name,
+    childReqId, childTitle, childSlug, target, note, questions: qs,
+  });
+  const localBriefing = `requirements/${reqId}/derive/${childReqId}.md`;
+  await pi.fs.writeText(localBriefing, briefing);
+  const inboxDir = nodePath.join(target.root, "requirements", ".inbox");
+  nodeFs.mkdirSync(inboxDir, { recursive: true });
+  const inboxPath = nodePath.join(inboxDir, `${childReqId}.md`);
+  nodeFs.writeFileSync(inboxPath, briefing); // 目标仓在工作区之外，只能走原生 fs
+
+  // 本仓 01-intake 的「跨项目承接记录」：按注册中心重算，人工可直接改回来
+  const intakePath = `requirements/${reqId}/01-intake.md`;
+  let intakeUpdated = false;
+  if (await exists(intakePath)) {
+    const rows = Object.keys(reg.requirements)
+      .filter(id => reg.requirements[id].derivedFrom === reqId)
+      .sort()
+      .map(id => {
+        const r = reg.requirements[id];
+        const done = !!r.projectRoot && nodeFs.existsSync(nodePath.join(r.projectRoot, "requirements", id, "00-meta.md"));
+        return `| ${id} | ${r.project} | ${done ? "已建档" : "待目标仓 /req-new"} |`;
+      });
+    const body = [
+      "<!-- req_derive 自动维护：本需求派生出的跨项目子需求。依赖只告警不阻塞，节奏由人工把控。 -->",
+      "| 派生需求 | 目标仓 | 建档状态 |",
+      "| --- | --- | --- |",
+      ...rows,
+    ].join("\n");
+    await pi.fs.writeText(intakePath, upsertSection(await pi.fs.readText(intakePath), "跨项目承接记录", body));
+    intakeUpdated = true;
+  }
+
+  return {
+    ok: true,
+    reqId,
+    parentTitle,
+    derivedReqId: childReqId,
+    derivedTitle: childTitle,
+    derivedSlug: childSlug,
+    targetProject: target.name,
+    targetRoot: target.root,
+    created: isNew,
+    alreadyAdopted: childAdopted,
+    dependsOn: deps,
+    files: { localBriefing, inbox: inboxPath, intakeUpdated },
+    pendingQuestions: qs,
+    next: childAdopted
+      ? `目标仓已建档 ${childReqId}，可直接在 ${target.name} 执行 /req-clarify`
+      : `在 ${target.name} 仓执行 /req-new（简报已放到该仓 requirements/.inbox/${childReqId}.md）`,
+    warnings: await depWarnings(reqId),
+  };
 }
 
 // ---------- 四个工具 ----------
@@ -670,6 +998,38 @@ const TOOLS = [
     risk: "low",
     schema: { type: "object", properties: {} },
     execute: registryList,
+  },
+  {
+    name: "adopt_project",
+    description: "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
+    risk: "high",
+    schema: {
+      type: "object",
+      properties: {
+        projectPath: { type: "string", description: "目标仓绝对路径（必须是已有 .git 的 git 仓库）" },
+        sourceRoot: { type: "string", description: "工作流源资产根（含 .pi/commands 与 docs/templates 的仓根）；缺省自动探测插件内嵌脚手架 / 当前仓库" },
+      },
+      required: ["projectPath"],
+    },
+    execute: adoptProject,
+  },
+  {
+    name: "req_derive",
+    description: "跨项目承接（派生需求）：本仓父需求发起到目标仓的子需求承接。校验目标仓已接入 → 生成建档简报（本仓留档 + 目标仓 requirements/.inbox/）→ 父需求 dependsOn 挂到派生子需求（只告警不阻塞）→ 回填本仓 01-intake 的「跨项目承接记录」。幂等：同一父需求 + 同一目标仓重跑复用已派生编号。不在目标仓直接建档——建档由目标仓 agent 用 /req-new 接力。",
+    risk: "medium",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "本仓父需求编号 REQ-YYYYMMDD-<slug>" },
+        targetProject: { type: "string", description: "目标仓绝对路径，或注册中心里已登记的仓名（支持片段匹配）" },
+        title: { type: "string", description: "派生子需求标题；缺省「<父需求标题>（<目标仓> 侧）」" },
+        slug: { type: "string", description: "派生子需求 slug；缺省由父 slug + 目标仓名生成" },
+        note: { type: "string", description: "交给目标仓承接的范围（接口/能力边界），写入简报" },
+        questions: { type: "array", items: { type: "string" }, description: "待目标仓答复的待定项，写入简报 Q 清单" },
+      },
+      required: ["reqId", "targetProject"],
+    },
+    execute: reqDerive,
   },
 ];
 
