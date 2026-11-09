@@ -25,6 +25,7 @@
 | `assets/` | 要复制进**被评审项目根**的执行资产：`rules/`（severity 映射 + semgrep 红线）、`scripts/review/`（run-l1.sh） | 随规则/执行器演进 |
 | `requirements/` | 需求档案存放区 | 随需求累积 |
 | `.pi/commands/` | 斜杠命令定义；**必须留在仓库根**（PI-Desktop 宿主约定） | 随命令演进 |
+| `.pi/prompts/` | **PI-Desktop `/` 菜单真正读取的提示模板**（项目级）；由 `scripts/sync-prompts.sh` 从 `.pi/commands` 生成，勿手改 | 随命令演进 |
 
 ## 文档索引
 

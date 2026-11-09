@@ -26,6 +26,10 @@ change-requested：变更流程，审批通过后回流到对应阶段
 
 ## 四、命令速查表
 
+> **斜杠命令如何出现在 `/` 菜单里**：PI-Desktop 只扫描两处提示模板——项目级 `<工作区>/.pi/prompts/*.md`、用户级 `~/.pi/agent/prompts/*.md`；`.pi/commands/` 不参与菜单。
+> 因此 `.pi/prompts/` 的每个文件都是薄封装（frontmatter 取 `description` / `argument-hint`，正文指向 `.pi/commands/<name>.md` 权威定义）。
+> 改了命令定义**必须**重跑 `bash scripts/sync-prompts.sh`；命令增减后同样重跑（脚本按目录全量生成）。
+
 | 命令 | 阶段 | 角色 Agent | 核心产出 |
 |---|---|---|---|
 | `/req-new <需求名>` | 需求承接 | 父 Agent 自执行 | 00-meta.md、01-intake.md |

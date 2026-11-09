@@ -26,12 +26,13 @@ description: 把另一个 git 仓库接入 pi-workflow（同步命令与文档�
 
 1. 备份目标仓旧 `docs/`（存在时）；
 2. 复制 `.pi/commands` 全部命令；
+3. 复制 `.pi/prompts` 全部斜杠入口（宿主 `/` 菜单只认这一层，`.pi/commands` 不进菜单）；
 3. 复制 `docs/`（含 `templates/`）；
 4. 建 `requirements/` 并放 `README.md`；
 5. `.gitignore` 追加 `requirements/.registry.json`（跨项目注册中心的本地镜像，不入库）；
-6. 自检模板与命令在位。
+6. 自检模板、命令与斜杠入口在位。
 
-**插件不可用时**：明确告知用户「该操作需要插件 `gwb.pi-workflow-gates` ≥ 0.9.0」，并停止；不允许手工用 `cp` 铺一遍了事（会产生版本漂移）。
+**插件不可用时**：明确告知用户「该操作需要插件 `gwb.pi-workflow-gates` ≥ 0.9.1」，并停止；不允许手工用 `cp` 铺一遍了事（会产生版本漂移）。
 
 ## 产出与状态流转
 

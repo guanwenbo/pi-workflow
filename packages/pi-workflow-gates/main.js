@@ -329,6 +329,17 @@ async function adoptProject(args) {
   nodeFs.cpSync(srcCmd, dstCmd, { recursive: true, force: true });
   checks.push(".pi/commands 已同步（" + nodeFs.readdirSync(dstCmd).length + " 个命令）");
 
+  // 1.1) 复制 .pi/prompts —— 宿主 `/` 命令面板只读这里的提示模板，不读 .pi/commands
+  // 没有这一层，接入方的命令在 PI-Desktop 里根本不会出现在斜杠菜单。
+  const srcPrompts = nodePath.join(srcRoot, ".pi", "prompts");
+  if (nodeFs.existsSync(srcPrompts)) {
+    const dstPrompts = nodePath.join(projectPath, ".pi", "prompts");
+    nodeFs.cpSync(srcPrompts, dstPrompts, { recursive: true, force: true });
+    checks.push(".pi/prompts 已同步（" + nodeFs.readdirSync(dstPrompts).length + " 个斜杠命令入口）");
+  } else {
+    checks.push(".pi/prompts 缺失（跳过）——请先在源仓执行 scripts/sync-prompts.sh");
+  }
+
   // 2) 复制 docs/（含 templates + 流程文档）
   nodeFs.cpSync(nodePath.join(srcRoot, "docs"), targetDocs, { recursive: true, force: true });
   checks.push("docs/ 已同步（含 templates）");
@@ -355,6 +366,7 @@ async function adoptProject(args) {
     nodePath.join(projectPath, "docs", "templates", "01-intake.md"),
     nodePath.join(projectPath, "docs", "templates", "00-meta.md"),
     nodePath.join(projectPath, ".pi", "commands", "req-new.md"),
+    nodePath.join(projectPath, ".pi", "prompts", "req-new.md"),
   ];
   for (const f of verify) {
     if (!nodeFs.existsSync(f)) throw new Error("自检失败，缺少：" + f);
@@ -1001,7 +1013,7 @@ const TOOLS = [
   },
   {
     name: "adopt_project",
-    description: "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
+    description: "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + .pi/prompts（宿主斜杠命令入口）+ docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
     risk: "high",
     schema: {
       type: "object",
