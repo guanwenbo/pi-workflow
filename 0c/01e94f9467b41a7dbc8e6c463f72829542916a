@@ -1,0 +1,16 @@
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+packages/pi-workflow-gates/renderer/index.html
+  h_b98c004121ae66 6-7,9-241,243-261,265-273,275-277,280-323,326-331,333-340,342,345-350,354-414,417,419-425,428-434,436-460,463-472,474-508,511-522,524-531,533-561
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0c01e94f9467b41a7dbc8e6c463f72829542916a",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
