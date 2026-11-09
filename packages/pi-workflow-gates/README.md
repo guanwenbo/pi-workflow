@@ -16,6 +16,7 @@ pi-workflow 的**机械层门禁插件**：把「建档 / 状态机 / 账本」�
 | `metrics_record` | EP-07 账本：CR 轮次/返工次数/人工打回原因，写 `N = N-1 + 1` 可核算式；人工打回联动返工 +1 | medium |
 | `adopt_project` | 一键接入新仓：同步 `.pi/commands` + `docs/` + `requirements/README.md`、补 `.gitignore` 镜像忽略、自检；旧 docs 自动备份；幂等。**斜杠命令不用你操心**——插件加载时已写入用户级 `~/.pi/agent/prompts`，全局生效 | high |
 | `req_derive` | 跨项目承接（派生需求）：校验目标仓已接入 → 本仓/目标仓各放一份建档简报 → 父需求 dependsOn 挂子需求 → 回填 `01-intake` 承接记录；幂等 | medium |
+| `check_update` | 更新检查：比对 `latest.json` 与本机版本，`download=true` 时把新版 `.piplug` 下到 `~/Downloads`（安装仍需用户在 Plugins 页面确认）；离线返回 ok=false 不影响本地 | low |
 
 ## 文件操作范围（manifest fs 声明）
 

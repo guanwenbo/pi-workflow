@@ -58,6 +58,7 @@ global.pi = {
   },
   plugin: {
     getDataPath: async () => path.join(TMP, "pluginData"),
+    getSettings: async () => ({ autoUpdateCheck: false }), // 测试不打真实更新接口
     getManifest: () => JSON.parse(fs.readFileSync(path.join(PLUGIN_DIR, "manifest.json"), "utf8")),
   },
   workspace: { get: async () => ({ path: HOME }) },
@@ -70,8 +71,8 @@ global.pi = {
   console.log("[1] 从分发副本加载插件（模拟 .piplug 安装）");
   const plugin = require(path.join(PLUGIN_DIR, "main.js"));
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 10, "应注册 10 个工具");
-  ok("插件在无仓库环境下正常加载，10 个工具注册完成");
+  assert.strictEqual(Object.keys(TOOLS).length, 11, "应注册 11 个工具");
+  ok("插件在无仓库环境下正常加载，11 个工具注册完成");
 
   // ---------- 2. 斜杠命令来自内嵌脚手架 ----------
   const pdir = path.join(HOME, ".pi", "agent", "prompts");

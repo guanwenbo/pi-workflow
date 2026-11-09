@@ -1,0 +1,11 @@
+{
+  "version": "0.9.4",
+  "tag": "v0.9.4",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.4/gwb.pi-workflow-gates-0.9.4.piplug",
+  "publishedAt": "2026-11-09T10:20:00.000Z",
+  "notes": [
+    "斜杠命令随插件全局安装（写入用户级 prompts）",
+    "插件自带工作流脚手架，装完即可接入新仓",
+    "新增更新检查：加载时比对版本，命令「检查插件更新」可下载新包"
+  ]
+}

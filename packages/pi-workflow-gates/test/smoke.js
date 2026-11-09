@@ -55,6 +55,7 @@ global.pi = {
   plugin: {
     getDataPath: async () => DATA,
     // 与宿主一致：模板里记录的插件版本来自 manifest
+    getSettings: async () => ({ autoUpdateCheck: false }), // 测试不打真实更新接口
     getManifest: () => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8")),
   },
   workspace: { get: async () => ({ path: WS }) },
@@ -87,8 +88,8 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 10, "应注册 10 个工具");
-  ok("插件加载：10 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 11, "应注册 11 个工具");
+  ok("插件加载：11 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件

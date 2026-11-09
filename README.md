@@ -44,28 +44,40 @@
 插件 `gwb.pi-workflow-gates` 自带一份工作流脚手架（`.pi/commands` + `docs/`，构建产物 `scaffold.generated.js`），
 所以**装完即可用**：斜杠命令自动进 `/` 菜单，接入新仓只需一条命令，不依赖本仓库路径。
 
-### 方式 A：安装打包好的插件（推荐给使用者）
+### 方式 A：安装 tag 版本（推荐给使用者）
 
-1. 拿到 `gwb.pi-workflow-gates-<版本>.piplug`（由维护者用 `PluginPack` 打成，见方式 C）。
-2. PI-Desktop → **Plugins** 页面 → **Install package** → 选择该 `.piplug` → 启用。
-3. 重启窗口或重载插件。此时：
+1. 打开 https://github.com/guanwenbo/pi-workflow/releases → 选一个 **`vX.Y.Z` tag**（不要用 main 上的临时产物）。
+2. 下载该 Release 的附件 `gwb.pi-workflow-gates-<版本>.piplug`。
+3. PI-Desktop → **Plugins** 页面 → **Install package** → 选该文件 → 启用。
+4. 重启窗口或重载插件。此时：
    - `/` 菜单的「提示词模板」组出现 `/req-new` `/req-derive` 等 15 条命令（写入 `~/.pi/agent/prompts`，全局生效）；
-   - 命令面板里出现「打开需求看板」；
-   - Agent 工具多出 `req_init` / `adopt_project` / `req_derive` 等 10 个。
-4. 在要跑需求的仓里执行 `/req-adopt <该仓绝对路径>` 接入该仓，然后 `/req-new` 建档。
+   - 命令面板出现「打开需求看板」与「检查 PI-Workflow 插件更新」；
+   - Agent 工具多出 `req_init` / `adopt_project` / `req_derive` / `check_update` 等 11 个。
+5. 在要跑需求的仓里执行 `/req-adopt <该仓绝对路径>` 接入该仓，然后 `/req-new` 建档。
+
+### 自动更新
+
+- 插件加载时（24 小时最多一次）读仓库 main 分支的 `latest.json` 比对版本；落后就在界面上提示「有新版本」。
+- 命令面板执行 **「检查 PI-Workflow 插件更新」**：强制检查并把新版 `.piplug` 下载到 `~/Downloads`，随后在 Plugins 页面 Install package 即可完成升级。
+- 宿主没有给插件「静默安装」API，所以最后一步安装必须由人点——这是宿主的安全边界，不是可以绕过的限制。
+- 不想联网检查：插件设置里置 `autoUpdateCheck: false`（或让 Agent 调 `check_update` 以外的功能即可，它不影响任何本地功能）。
 
 ### 方式 B：从源码加载（推荐给维护者/改造者）
 
 1. `git clone git@github.com:guanwenbo/pi-workflow.git`
 2. PI-Desktop → Plugins → **Load development plugin** → 指向 `pi-workflow/packages/pi-workflow-gates`。
-3. 改完代码保存即热加载；提交前跑 `node packages/pi-workflow-gates/test/smoke.js` 与 `packed-install.js`。
+3. 改完保存即热加载；提交前跑三个测试：`smoke.js`、`packed-install.js`、`update-check.js`。
 
-### 方式 C：自己打包分发
+### 方式 C：发版（维护者）
 
 ```bash
-node scripts/build-scaffold.js   # 重建内嵌脚手架（改了 .pi/commands 或 docs 必须重跑，否则分发包是旧内容）
-bash scripts/sync-install.sh     # 同步本机安装副本（会顺带重建脚手架）
-# 然后用 PI-Desktop 的 PluginPack 对该目录打包，产物在 packages/pi-workflow-gates/dist/
+# 1. 改 packages/pi-workflow-gates/manifest.json 的版本号（如 0.9.5）
+# 2. 打包前必须先重建内嵌脚手架，否则分发包里是旧命令/旧文档
+node scripts/build-scaffold.js
+# 3. 在 PI-Desktop 对该目录执行 PluginPack，产物在 dist/
+# 4. 一条命令完成：校验 + 测试 + 更新 latest.json + 打 tag + 推送 + 建 Release 并上传附件
+bash scripts/release.sh
 ```
 
-`.pi/commands` 或 `docs/` 有改动却没重建脚手架时，分发包里的命令仍是旧版——`node scripts/build-scaffold.js --check` 可校验是否过期。
+发版纪律：**每个版本必须有 `vX.Y.Z` tag**，使用方只认 tag 对应的 Release 附件；`latest.json` 由 `release.sh` 自动重写，是自动更新的唯一数据源。
+`node scripts/build-scaffold.js --check` 可校验脚手架是否过期。

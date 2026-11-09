@@ -154,6 +154,8 @@ const nodeFs = require("node:fs");
 const nodePath = require("node:path");
 const nodeOs = require("node:os");
 const nodeZlib = require("node:zlib");
+const nodeHttps = require("node:https");
+
 async function registryFile() {
   const dataPath = await pi.plugin.getDataPath();
   return `${dataPath}/registry.json`;
@@ -1014,6 +1016,169 @@ async function installGlobalCommandTemplates() {
   }
   return { ok: true, dir: outDir, version, written, unchanged, skipped, source: embedded && !cmdDir ? "embedded" : "filesystem" };
 }
+// ---------- 更新检查（自更新提示） ----------
+// 宿主的插件 API 只有 app/themes/plugin/commands/speech/ui/fs/agent，**没有安装/更新接口**，
+// 所以「自动更新」只能做到：读版本清单 → 比对 → 提示 →（可选）下载 .piplug，
+// 最后一步安装由用户在 Plugins 页面完成（宿主强制人工确认）。
+// 清单放仓库 main 分支：raw.githubusercontent 可读、不需要 token；发版脚本每次重写它。
+// 全插件唯一的外网访问就是这一条 GET，可用插件设置 autoUpdateCheck=false 关闭。
+
+const UPDATE_URL = process.env.PI_WORKFLOW_UPDATE_URL ||
+  "https://raw.githubusercontent.com/guanwenbo/pi-workflow/main/packages/pi-workflow-gates/latest.json";
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+function versionTuple(v) {
+  return String(v || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .map(n => parseInt(n, 10) || 0);
+}
+
+/** a 是否比 b 新（语义化版本，只比前三段） */
+function isNewerVersion(a, b) {
+  const x = versionTuple(a), y = versionTuple(b);
+  for (let i = 0; i < 3; i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  }
+  return false;
+}
+
+function currentPluginVersion() {
+  try {
+    const mf = pi.plugin.getManifest && pi.plugin.getManifest();
+    return (mf && mf.version) || "0.0.0";
+  } catch { return "0.0.0"; }
+}
+
+// 插件数据目录路径在 onLoad 里确定一次，之后同步读写状态文件
+let updateStatePathCache = "";
+function updateStateFileSync() {
+  return updateStatePathCache || "";
+}
+
+function readUpdateState() {
+  const p = updateStateFileSync();
+  if (!p) return null;
+  try { return JSON.parse(nodeFs.readFileSync(p, "utf8")); } catch { return null; }
+}
+
+function writeUpdateState(state) {
+  const p = updateStateFileSync();
+  if (!p) return;
+  try {
+    nodeFs.mkdirSync(nodePath.dirname(p), { recursive: true });
+    nodeFs.writeFileSync(p, JSON.stringify(state, null, 2));
+  } catch { /* 状态写不了不影响检查本身 */ }
+}
+
+/** GET JSON；file:// 用于测试与内网镜像（生产是 https） */
+function fetchJson(url, timeoutMs) {
+  if (url.startsWith("file://")) {
+    return Promise.resolve().then(() => JSON.parse(nodeFs.readFileSync(url.slice(7), "utf8")));
+  }
+  return fetchRaw(url, timeoutMs).then(buf => JSON.parse(buf.toString("utf8")));
+}
+
+function fetchRaw(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    if (url.startsWith("file://")) {
+      try { resolve(nodeFs.readFileSync(url.slice(7))); } catch (e) { reject(e); }
+      return;
+    }
+    const req = nodeHttps.get(url, { headers: { "user-agent": "gwb.pi-workflow-gates", accept: "*/*" } }, res => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        fetchRaw(res.headers.location, timeoutMs).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+      const chunks = [];
+      let size = 0;
+      res.on("data", c => {
+        size += c.length;
+        if (size > 32 * 1024 * 1024) { req.destroy(new Error("响应过大")); return; }
+        chunks.push(c);
+      });
+      res.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+    req.setTimeout(timeoutMs || 8000, () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+  });
+}
+
+/**
+ * 检查更新。force 忽略 24h 缓存；download 顺手把 .piplug 下到 ~/Downloads。
+ * 失败只返回 ok=false，不抛错——离线必须照常可用。
+ */
+async function checkUpdate(args) {
+  const { force, source, download } = args || {};
+  const url = source || UPDATE_URL;
+  const current = currentPluginVersion();
+  const prev = readUpdateState();
+
+  if (!force && prev && prev.checkedAt && !prev.error) {
+    const age = Date.now() - Date.parse(prev.checkedAt);
+    if (Number.isFinite(age) && age < UPDATE_CHECK_INTERVAL_MS) {
+      return { ok: true, cached: true, current, latest: prev.latest, upToDate: prev.upToDate, downloadUrl: prev.downloadUrl || "", tag: prev.tag || "", notes: prev.notes || [], checkedAt: prev.checkedAt };
+    }
+  }
+
+  try {
+    const info = await fetchJson(url, 8000);
+    const latest = String(info.version || "0.0.0");
+    const upToDate = !isNewerVersion(latest, current);
+    const state = {
+      checkedAt: new Date().toISOString(),
+      current, latest, upToDate,
+      tag: info.tag || `v${latest}`,
+      downloadUrl: info.downloadUrl || "",
+      notes: Array.isArray(info.notes) ? info.notes : [],
+      error: null,
+    };
+    writeUpdateState(state);
+    const out = { ok: true, cached: false, ...state };
+    if (download && !upToDate && state.downloadUrl) {
+      try {
+        const name = `gwb.pi-workflow-gates-${latest}.piplug`;
+        const dir = nodePath.join(nodeOs.homedir(), "Downloads");
+        nodeFs.mkdirSync(dir, { recursive: true });
+        const file = nodePath.join(dir, name);
+        nodeFs.writeFileSync(file, await fetchRaw(state.downloadUrl, 60000));
+        out.downloadedTo = file;
+        out.next = `在 Plugins 页面 → Install package 选择 ${file} 完成升级`;
+      } catch (e) {
+        out.downloadError = `下载失败：${e.message}`;
+      }
+    } else if (!upToDate) {
+      out.next = `在 Plugins 页面 → Install package 安装 ${state.tag} 的 .piplug（或带 download=true 让插件自动下载到 ~/Downloads）`;
+    }
+    return out;
+  } catch (e) {
+    writeUpdateState({ checkedAt: new Date().toISOString(), current, error: e.message });
+    return { ok: false, current, error: `检查更新失败（不影响本地使用）：${e.message}` };
+  }
+}
+
+/** 加载时静默检查：同一版本只提示一次，失败不打扰 */
+async function autoCheckUpdate() {
+  try {
+    let settings = {};
+    try { settings = (await pi.plugin.getSettings()) || {}; } catch { settings = {}; }
+    if (settings.autoUpdateCheck === false) return { skipped: true };
+    const r = await checkUpdate({});
+    if (!r.ok || r.upToDate) return r;
+    const prev = readUpdateState();
+    if (prev && prev.notifiedFor === r.latest) return { ...r, notified: false };
+    writeUpdateState({ ...prev, ...r, notifiedFor: r.latest });
+    try {
+      await pi.ui.showToast(`PI-Workflow 插件有新版本 ${r.latest}（当前 ${r.current}）：命令面板搜「检查插件更新」`);
+    } catch { /* toast 失败无所谓 */ }
+    return { ...r, notified: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 
 // ---------- 注册 ----------
 
@@ -1174,14 +1339,48 @@ const TOOLS = [
     },
     execute: reqDerive,
   },
+  {
+    name: "check_update",
+    description: "检查插件版本：读取版本清单（默认仓库 main 分支的 latest.json）与本机 manifest 比对，返回 current/latest/upToDate/downloadUrl/notes。force 忽略 24h 缓存；download=true 时把新版 .piplug 下到 ~/Downloads（最后一步安装仍需用户在 Plugins 页面确认，宿主没有静默安装 API）。离线时返回 ok=false 且不影响本地功能。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        force: { type: "boolean", description: "忽略 24 小时缓存，强制联网检查" },
+        download: { type: "boolean", description: "发现新版本时顺手下载 .piplug 到 ~/Downloads" },
+        source: { type: "string", description: "覆盖版本清单地址（测试或内网镜像用；生产留空）" },
+      },
+    },
+    execute: checkUpdate,
+  },
 ];
 
 const DASHBOARD_COMMAND = "gwb.pi-workflow-gates.dashboard";
+const CHECK_UPDATE_COMMAND = "gwb.pi-workflow-gates.check-update";
 
 async function onLoad() {
   for (const t of TOOLS) await pi.agent.registerTool(t);
+
   // 面板打开入口：命令面板搜「需求看板」
   await pi.commands.register({ id: DASHBOARD_COMMAND, title: "打开需求看板 / PI-Workflow Dashboard", run: () => pi.ui.openPanel() });
+
+  // 更新检查入口：命令面板搜「检查插件更新」（发现新版会顺手下载 .piplug）
+  await pi.commands.register({
+    id: CHECK_UPDATE_COMMAND,
+    title: "检查 PI-Workflow 插件更新 / Check PI-Workflow updates",
+    keywords: ["workflow", "更新", "update", "upgrade"],
+    run: async () => {
+      const r = await checkUpdate({ force: true, download: true });
+      const msg = !r.ok
+        ? r.error
+        : r.upToDate
+          ? `已是最新版本 ${r.current}`
+          : `有新版本 ${r.latest}（当前 ${r.current}）` +
+            (r.downloadedTo ? `\n已下载：${r.downloadedTo}\n到 Plugins 页面 Install package 安装` : "");
+      try { await pi.ui.showToast(msg); } catch { /* 无 UI 宿主不影响 */ }
+    },
+  });
+
   // 斜杠命令跟着插件走：装到用户级 prompts 目录，所有工作区可见；失败只记日志、不阻塞工具注册
   try {
     const r = await installGlobalCommandTemplates();
@@ -1189,11 +1388,19 @@ async function onLoad() {
   } catch (e) {
     console.warn("[pi-workflow-gates] 斜杠命令安装异常：", e && e.message);
   }
+
+  // 更新状态文件在插件数据目录下：先拿路径，再静默检查（失败不打扰）
+  try {
+    const dataPath = await pi.plugin.getDataPath();
+    updateStatePathCache = nodePath.join(dataPath, "update-check.json");
+  } catch { /* 拿不到就只联网检查、不落状态 */ }
+  await autoCheckUpdate();
 }
 
 async function onUnload() {
   for (const t of TOOLS) await pi.agent.unregisterTool(t.name);
   await pi.commands.unregister(DASHBOARD_COMMAND);
+  await pi.commands.unregister(CHECK_UPDATE_COMMAND);
 }
 
 /**
