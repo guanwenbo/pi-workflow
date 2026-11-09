@@ -29,5 +29,12 @@ pi-workflow 的**机械层门禁插件**：把「建档 / 状态机 / 账本」�
 
 ## 安装
 
-- 开发模式：在 pi-workflow 工作区内打开本目录即热加载
-- 其他项目：复制本目录到 `~/.pi-desktop/plugins/installed/gwb.pi-workflow-gates/` 并在 `registry.json` 注册（或经 PluginPack 打包安装）
+| 场景 | 做法 |
+| --- | --- |
+| 使用者（拿到 `.piplug`） | Plugins 页面 → **Install package** → 选包 → 启用 → 重启窗口或重载插件。斜杠命令自动写入 `~/.pi/agent/prompts`，无需任何手工步骤 |
+| 维护者（本仓库内开发） | Plugins 页面 → **Load development plugin** → 指向 `packages/pi-workflow-gates`，保存即热加载 |
+| 本机安装副本 | `bash scripts/sync-install.sh`（会先重建内嵌脚手架再同步） |
+
+**自包含说明**：插件把工作流脚手架（`.pi/commands` + `docs/` + `requirements/README.md`）压进 `scaffold.generated.js` 随包分发。
+因此安装后即使用户机器上没有 pi-workflow 仓库，`adopt_project` 也能接入新仓、`/` 菜单也能出命令。
+它是构建产物（已 gitignore），改了命令或文档后必须 `node scripts/build-scaffold.js` 重建，否则分发包是旧内容（`--check` 可校验）。

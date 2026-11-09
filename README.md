@@ -38,3 +38,34 @@
 | [docs/PROFILE.md](docs/PROFILE.md) | 开发者画像 |
 | [docs/EVOLUTION.md](docs/EVOLUTION.md) | 流程进化记录 |
 | [requirements/README.md](requirements/README.md) | 需求档案规范 |
+
+## 给别人用：插件安装
+
+插件 `gwb.pi-workflow-gates` 自带一份工作流脚手架（`.pi/commands` + `docs/`，构建产物 `scaffold.generated.js`），
+所以**装完即可用**：斜杠命令自动进 `/` 菜单，接入新仓只需一条命令，不依赖本仓库路径。
+
+### 方式 A：安装打包好的插件（推荐给使用者）
+
+1. 拿到 `gwb.pi-workflow-gates-<版本>.piplug`（由维护者用 `PluginPack` 打成，见方式 C）。
+2. PI-Desktop → **Plugins** 页面 → **Install package** → 选择该 `.piplug` → 启用。
+3. 重启窗口或重载插件。此时：
+   - `/` 菜单的「提示词模板」组出现 `/req-new` `/req-derive` 等 15 条命令（写入 `~/.pi/agent/prompts`，全局生效）；
+   - 命令面板里出现「打开需求看板」；
+   - Agent 工具多出 `req_init` / `adopt_project` / `req_derive` 等 10 个。
+4. 在要跑需求的仓里执行 `/req-adopt <该仓绝对路径>` 接入该仓，然后 `/req-new` 建档。
+
+### 方式 B：从源码加载（推荐给维护者/改造者）
+
+1. `git clone git@github.com:guanwenbo/pi-workflow.git`
+2. PI-Desktop → Plugins → **Load development plugin** → 指向 `pi-workflow/packages/pi-workflow-gates`。
+3. 改完代码保存即热加载；提交前跑 `node packages/pi-workflow-gates/test/smoke.js` 与 `packed-install.js`。
+
+### 方式 C：自己打包分发
+
+```bash
+node scripts/build-scaffold.js   # 重建内嵌脚手架（改了 .pi/commands 或 docs 必须重跑，否则分发包是旧内容）
+bash scripts/sync-install.sh     # 同步本机安装副本（会顺带重建脚手架）
+# 然后用 PI-Desktop 的 PluginPack 对该目录打包，产物在 packages/pi-workflow-gates/dist/
+```
+
+`.pi/commands` 或 `docs/` 有改动却没重建脚手架时，分发包里的命令仍是旧版——`node scripts/build-scaffold.js --check` 可校验是否过期。

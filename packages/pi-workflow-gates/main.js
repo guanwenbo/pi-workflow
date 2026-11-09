@@ -153,7 +153,7 @@ const DONE_STATES = new Set(["released", "archived"]);
 const nodeFs = require("node:fs");
 const nodePath = require("node:path");
 const nodeOs = require("node:os");
-
+const nodeZlib = require("node:zlib");
 async function registryFile() {
   const dataPath = await pi.plugin.getDataPath();
   return `${dataPath}/registry.json`;
@@ -293,22 +293,61 @@ async function registryDep(args) {
   return { ok: true, reqId, action, dependsOn: me.dependsOn, warnings };
 }
 
+// 跨项目/跨工作区的写入一律走原生 node:fs（pi.fs 网关只管当前工作区）。
+// ---------- 内嵌脚手架：插件自带的 .pi/commands + docs + requirements/README ----------
+// 分发场景（.piplug 安装到别人机器）下，插件目录之外没有 pi-workflow 仓库，
+// 文件系统探测必然失败；scaffold.generated.js 把脚手架随包带走，装到任何路径都能接入新仓。
+// 它是构建产物（scripts/build-scaffold.js），开发态可能不存在——不存在就回退读仓库目录。
+
+let embeddedScaffoldCache = null;
+
+/** 读内嵌脚手架 { "相对路径": 内容 }；不可用时返回 null（不抛错） */
+function readEmbeddedScaffold() {
+  if (embeddedScaffoldCache !== null) return embeddedScaffoldCache || null;
+  try {
+    const mod = require("./scaffold.generated.js");
+    const raw = mod.encoding === "gzip+base64"
+      ? nodeZlib.gunzipSync(Buffer.from(mod.data, "base64")).toString("utf8")
+      : Buffer.from(mod.data, "base64").toString("utf8");
+    embeddedScaffoldCache = JSON.parse(raw);
+  } catch (e) {
+    embeddedScaffoldCache = false; // 记住不可用，避免每次调用都试一遍
+  }
+  return embeddedScaffoldCache || null;
+}
+
+/** 把内嵌脚手架按前缀写入目标仓，返回写入文件数 */
+function writeEmbeddedScaffold(projectPath, prefix, map) {
+  let n = 0;
+  for (const [rel, content] of Object.entries(map)) {
+    if (!rel.startsWith(prefix)) continue;
+    const abs = nodePath.join(projectPath, rel);
+    nodeFs.mkdirSync(nodePath.dirname(abs), { recursive: true });
+    nodeFs.writeFileSync(abs, content);
+    n += 1;
+  }
+  return n;
+}
+
 // ---------- adopt_project：一键把目标仓接入 pi-workflow ----------
-// 跨工作区/目标仓的写入走原生 node:fs（pi.fs 网关只管当前工作区）。
-// 幂等：已接入则跳过；返回接入结果与需人工确认清单。
+// 跨项目/跨工作区的写入一律走原生 node:fs（pi.fs 网关只管当前工作区）。
+// 幂等：已接入则只覆盖同步；返回接入结果与需人工确认清单。
 
 async function adoptProject(args) {
   const { projectPath } = args || {};
   if (!projectPath) throw new Error("缺少必填参数：projectPath（目标仓绝对路径）");
   if (!nodeFs.existsSync(projectPath)) throw new Error(`目标路径不存在：${projectPath}`);
   if (!nodeFs.existsSync(nodePath.join(projectPath, ".git"))) throw new Error(`目标不是 git 仓库（无 .git）：${projectPath}`);
-
-  // 源资产：显式 sourceRoot / PI_WORKFLOW_HOME / 插件包内嵌脚手架（安装态）/ 仓库开发态
-  const srcRoot = resolveScaffoldRoot(args && args.sourceRoot, projectPath);
-  if (!srcRoot) {
+  // 目标仓一旦已接入，它自己也满足「含 .pi/commands + docs/templates」——必须排除，
+  // 否则重跑时源与目标是同一目录（cpSync 会直接报错）。此时改走内嵌源，内容一致且幂等。
+  let srcRoot = resolveScaffoldRoot(args && args.sourceRoot, projectPath);
+  if (srcRoot && nodePath.resolve(srcRoot) === nodePath.resolve(projectPath)) srcRoot = null;
+  const embedded = srcRoot ? null : readEmbeddedScaffold();
+  if (!srcRoot && !embedded) {
     throw new Error(
-      "找不到工作流源资产（需同时含 .pi/commands/req-new.md 与 docs/templates/00-meta.md）：" +
-      "请在 pi-workflow 仓内运行，或用 sourceRoot 指定仓库根，或设置 PI_WORKFLOW_HOME"
+      "找不到工作流源资产（.pi/commands + docs/templates）：" +
+        "请用 sourceRoot 指定 pi-workflow 仓库根，或设置 PI_WORKFLOW_HOME；" +
+        "若是自行打的分发包，请先执行 node scripts/build-scaffold.js 再打包"
     );
   }
   const checks = [];
@@ -323,22 +362,28 @@ async function adoptProject(args) {
     needConfirm.push(`旧 docs 已备份为 ${nodePath.basename(backup)}，确认无遗留后可删`);
   }
 
-  // 1) 复制 .pi/commands
-  const srcCmd = nodePath.join(srcRoot, ".pi", "commands");
-  const dstCmd = nodePath.join(projectPath, ".pi", "commands");
-  nodeFs.mkdirSync(nodePath.dirname(dstCmd), { recursive: true });
-  nodeFs.cpSync(srcCmd, dstCmd, { recursive: true, force: true });
-  checks.push(".pi/commands 已同步（" + nodeFs.readdirSync(dstCmd).length + " 个命令）");
+  // 1) 同步命令与文档：文件系统源直接拷，内嵌源按路径写入（内容一致）
+  if (srcRoot) {
+    const srcCmd = nodePath.join(srcRoot, ".pi", "commands");
+    const dstCmd = nodePath.join(projectPath, ".pi", "commands");
+    nodeFs.mkdirSync(nodePath.dirname(dstCmd), { recursive: true });
+    nodeFs.cpSync(srcCmd, dstCmd, { recursive: true, force: true });
+    checks.push(".pi/commands 已同步（" + nodeFs.readdirSync(dstCmd).length + " 个命令）");
+    nodeFs.cpSync(nodePath.join(srcRoot, "docs"), targetDocs, { recursive: true, force: true });
+    checks.push("docs/ 已同步（含 templates）");
+  } else {
+    checks.push(".pi/commands 已写入（" + writeEmbeddedScaffold(projectPath, ".pi/commands/", embedded) + " 个命令，内嵌源）");
+    checks.push("docs/ 已写入（" + writeEmbeddedScaffold(projectPath, "docs/", embedded) + " 个文件，内嵌源）");
+  }
 
-
-  // 2) 复制 docs/（含 templates + 流程文档）
-  nodeFs.cpSync(nodePath.join(srcRoot, "docs"), targetDocs, { recursive: true, force: true });
-  checks.push("docs/ 已同步（含 templates）");
-
-  // 3) requirements/README.md
+  // 2) requirements/README.md
   const reqDir = nodePath.join(projectPath, "requirements");
   nodeFs.mkdirSync(reqDir, { recursive: true });
-  nodeFs.copyFileSync(nodePath.join(srcRoot, "requirements", "README.md"), nodePath.join(reqDir, "README.md"));
+  if (srcRoot) {
+    nodeFs.copyFileSync(nodePath.join(srcRoot, "requirements", "README.md"), nodePath.join(reqDir, "README.md"));
+  } else {
+    nodeFs.writeFileSync(nodePath.join(reqDir, "README.md"), embedded["requirements/README.md"] || "");
+  }
   checks.push("requirements/README.md 已就位");
 
   // 4) .gitignore 补镜像忽略
@@ -886,17 +931,16 @@ function globalPromptsDir() {
   return nodePath.join(nodeOs.homedir(), ".pi", "agent", "prompts");
 }
 
-/** 把一份命令定义渲染成**自包含**模板：正文含完整命令文档，任何工作区都能直接执行 */
-function renderGlobalTemplate(filePath, version) {
-  const raw = nodeFs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
-  if (!raw.startsWith("---")) return null;
-  const fmEnd = raw.indexOf("\n---", 3);
+/** 把一段命令定义文本渲染成**自包含**模板；结构不合规返回 null */
+function renderTemplateFromText(name, raw, version) {
+  const text = String(raw || "").replace(/\r\n/g, "\n");
+  if (!text.startsWith("---")) return null;
+  const fmEnd = text.indexOf("\n---", 3);
   if (fmEnd < 0) return null;
-  const fm = raw.slice(4, fmEnd);
-  const body = raw.slice(fmEnd + 4).trim();
+  const fm = text.slice(4, fmEnd);
+  const body = text.slice(fmEnd + 4).trim();
   if (!body) return null;
 
-  const name = nodePath.basename(filePath, ".md");
   const descLine = (fm.match(/^description:\s*(.+)$/m) || [])[1] || `pi-workflow 命令 /${name}`;
   const hintLine = (body.match(/^参数：\s*(.+)$/m) || [])[1] || "";
   const description = descLine.trim().replace(/"/g, '\\"');
@@ -918,32 +962,48 @@ function renderGlobalTemplate(filePath, version) {
   ].join("\n");
 }
 
+/** 文件版：读文件后交给 renderTemplateFromText */
+function renderGlobalTemplate(filePath, version) {
+  return renderTemplateFromText(nodePath.basename(filePath, ".md"), nodeFs.readFileSync(filePath, "utf8"), version);
+}
+
 /**
  * 安装/刷新用户级斜杠命令。幂等：内容未变不写；同名非托管文件跳过。
  * 不抛错——命令没装上也不能连带门禁工具不可用。
  */
 async function installGlobalCommandTemplates() {
-  const srcRoot = resolveScaffoldRoot(null, null);
-  if (!srcRoot) return { ok: false, reason: "找不到命令源自（.pi/commands）" };
-  const cmdDir = nodePath.join(srcRoot, ".pi", "commands");
-  if (!nodeFs.existsSync(cmdDir)) return { ok: false, reason: "缺少 .pi/commands" };
-
   let version = "unknown";
   try {
     const mf = pi.plugin.getManifest && pi.plugin.getManifest();
     if (mf && mf.version) version = mf.version;
   } catch { /* 拿不到版本不影响安装 */ }
 
+  // 命令来源两选一：开发态/同步目录读仓库文件；分发包读内嵌脚手架
+  const srcRoot = resolveScaffoldRoot(null, null);
+  const cmdDir = srcRoot ? nodePath.join(srcRoot, ".pi", "commands") : null;
+  const embedded = cmdDir && nodeFs.existsSync(cmdDir) ? null : readEmbeddedScaffold();
+  const sources = []; // [{ name, raw }]
+  if (cmdDir && nodeFs.existsSync(cmdDir)) {
+    for (const f of nodeFs.readdirSync(cmdDir).filter(n => n.endsWith(".md")).sort()) {
+      sources.push({ name: f, raw: nodeFs.readFileSync(nodePath.join(cmdDir, f), "utf8") });
+    }
+  } else if (embedded) {
+    for (const rel of Object.keys(embedded).filter(p => p.startsWith(".pi/commands/") && p.endsWith(".md")).sort()) {
+      sources.push({ name: nodePath.basename(rel), raw: embedded[rel] });
+    }
+  }
+  if (!sources.length) return { ok: false, reason: "找不到命令定义（.pi/commands 与内嵌脚手架都不可用）" };
+
   const outDir = globalPromptsDir();
   nodeFs.mkdirSync(outDir, { recursive: true });
   const written = [], unchanged = [], skipped = [];
-  for (const name of nodeFs.readdirSync(cmdDir).filter(n => n.endsWith(".md")).sort()) {
+  for (const { name, raw } of sources) {
     const target = nodePath.join(outDir, name);
     if (nodeFs.existsSync(target) && !nodeFs.readFileSync(target, "utf8").includes(MANAGED_MARK)) {
       skipped.push(name); // 用户自己的同名模板：动它等于抢用户的命令名
       continue;
     }
-    const content = renderGlobalTemplate(nodePath.join(cmdDir, name), version);
+    const content = renderTemplateFromText(name.replace(/\.md$/, ""), raw, version);
     if (!content) { skipped.push(name); continue; }
     if (nodeFs.existsSync(target) && nodeFs.readFileSync(target, "utf8") === content) {
       unchanged.push(name);
@@ -952,7 +1012,7 @@ async function installGlobalCommandTemplates() {
     nodeFs.writeFileSync(target, content);
     written.push(name);
   }
-  return { ok: true, dir: outDir, version, written, unchanged, skipped };
+  return { ok: true, dir: outDir, version, written, unchanged, skipped, source: embedded && !cmdDir ? "embedded" : "filesystem" };
 }
 
 // ---------- 注册 ----------

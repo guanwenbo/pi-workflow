@@ -1,1 +1,3 @@
 requirements/.registry.json
+packages/pi-workflow-gates/scaffold.generated.js
+packages/*/dist/
