@@ -1,0 +1,32 @@
+.pi/commands/req-adopt.md
+  h_b98c004121ae66 1-41
+.pi/commands/req-derive.md
+  h_b98c004121ae66 1-56
+README.md
+  h_b98c004121ae66 24
+docs/WORKFLOW.md
+  h_b98c004121ae66 32-33
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 17-18,22-24,28
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 53-54,126,132-140,205,212,295-373,388-625,1002-1033
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6,8,251-312
+packages/pi-workflow-gates/renderer/index.html
+  h_b98c004121ae66 146-169,309,460,648-661,694-723
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 1-202
+scripts/sync-install.sh
+  h_b98c004121ae66 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8c996850a7a59c767a8fa4af29f3dd83fac997a8",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
