@@ -1,0 +1,30 @@
+README.md
+  h_b98c004121ae66 47,49-52,54-63,69,71,74-79,82-83
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 19
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 1-11
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 157-158,1019-1181,1342-1355,1359,1363,1366-1383,1391-1397,1403
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5,8,313-334
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 61,74-75
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 58,91-92
+packages/pi-workflow-gates/test/update-check.js
+  h_b98c004121ae66 1-116
+scripts/release.sh
+  h_b98c004121ae66 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "aa4110f331386dc41db9394d9555a60873ea1554",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
