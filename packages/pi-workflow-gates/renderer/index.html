@@ -5,9 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PI-Workflow 需求看板</title>
 <style>
+  /* 深浅色自适应：不依赖宿主变量，用系统/宿主主题的 prefers-color-scheme */
   :root {
-    --bg: #0f1115; --card: #171a21; --border: #262b36; --text: #e6e9ef;
-    --dim: #8b93a3; --accent: #4f8cff; --ok: #34c77b; --warn: #e6a23c; --bad: #e5534b;
+    --bg: #f5f6f8; --card: #ffffff; --border: #d9dcdf; --text: #1f2328;
+    --dim: #6a737d; --accent: #2f6fdb; --ok: #1a7f37; --warn: #9a6700;
+    --bad: #cf222e; --chip: #eef1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --border: #262b36; --text: #e6e9ef;
+      --dim: #8b93a3; --accent: #4f8cff; --ok: #34c77b; --warn: #e6a23c;
+      --bad: #e5534b; --chip: #262b36;
+    }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -15,7 +24,7 @@
     background: var(--bg); color: var(--text); font-size: 13px;
     padding: 16px 20px 24px;
   }
-  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
   header h1 { font-size: 16px; font-weight: 600; }
   header .meta { color: var(--dim); font-size: 12px; margin-left: auto; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -25,12 +34,14 @@
   }
   .toolbar button.active { border-color: var(--accent); color: var(--accent); }
   .toolbar button:hover { border-color: var(--accent); }
+  .refresh { margin-left: auto; }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
   th { color: var(--dim); font-weight: 500; font-size: 12px; white-space: nowrap; }
-  tr:hover td { background: rgba(79, 140, 255, 0.05); }
+  tr:hover td { background: var(--chip); }
   td.id { font-family: "SF Mono", Menlo, monospace; font-size: 12px; white-space: nowrap; }
-  td.title { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.title { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.proj { color: var(--dim); white-space: nowrap; }
   .badge {
     display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
     border: 1px solid var(--border); white-space: nowrap;
@@ -38,47 +49,36 @@
   .badge.draft, .badge.clarifying { color: var(--dim); }
   .badge.clarified, .badge.designing, .badge.reviewed { color: var(--warn); border-color: var(--warn); }
   .badge.confirmed, .badge.planned, .badge.developing { color: var(--accent); border-color: var(--accent); }
-  .badge.cr-agent, .badge.cr-human { color: #b57bff; border-color: #b57bff; }
-  .badge.cr-confirmed, .badge.testing { color: #3ec6c6; border-color: #3ec6c6; }
+  .badge.cr-agent, .badge.cr-human { color: #8a4fd8; border-color: #8a4fd8; }
+  .badge.cr-confirmed, .badge.testing { color: #0e8a8a; border-color: #0e8a8a; }
   .badge.ready-release, .badge.released { color: var(--ok); border-color: var(--ok); }
   .badge.archived { color: var(--dim); border-color: var(--dim); opacity: 0.7; }
-  .badge.blocked, .badge.change-requested { color: var(--bad); border-color: var(--bad); }
+  .badge.blocked, .badge.change-requested, .badge.dep-warn { color: var(--bad); border-color: var(--bad); }
   .num { font-family: "SF Mono", Menlo, monospace; text-align: right; }
   .num.bad { color: var(--bad); }
   .empty { color: var(--dim); text-align: center; padding: 48px 0; }
-  .detail {
-    margin-top: 14px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px 16px; display: none;
+  .proj-group {
+    margin: 6px 0 2px; color: var(--dim); font-size: 12px; font-weight: 600;
+    padding: 4px 2px; border-bottom: 1px solid var(--border);
   }
-  .detail.show { display: block; }
-  .detail h2 { font-size: 13px; margin-bottom: 10px; }
-  .detail h2 .close { float: right; cursor: pointer; color: var(--dim); font-weight: 400; }
-  .logrow { display: flex; gap: 10px; padding: 3px 0; font-size: 12px; color: var(--dim); }
-  .logrow .fromto { color: var(--text); font-family: "SF Mono", Menlo, monospace; }
-  .error { color: var(--bad); padding: 12px; }
+  .error { color: var(--bad); padding: 12px; background: var(--card); border-radius: 8px; }
+  .hint { color: var(--dim); font-size: 12px; margin-top: 8px; }
 </style>
 </head>
 <body>
   <header>
     <h1>需求看板</h1>
-    <span class="meta" id="wsMeta">加载中…</span>
+    <span class="meta" id="meta">加载中…</span>
   </header>
   <div class="toolbar" id="filters"></div>
   <div id="content"><div class="empty">加载中…</div></div>
-  <div class="detail" id="detail"></div>
 
 <script>
 (async () => {
   const bridge = window.pluginBridge;
-  // 面板/侧栏视图的 bridge 都只有 invoke(channel, payload)——payload 为对象；
-  // fs 通道按宿主约定包装为 { path }，glob 为 { pattern }，list 为 { dir }
-  const call = (ch, arg) => {
-    let payload = {};
-    if (ch === "fs.readText" || ch === "fs.stat") payload = { path: arg };
-    else if (ch === "fs.glob") payload = { pattern: arg };
-    else if (ch === "fs.list") payload = { dir: arg };
-    return bridge.invoke(ch, payload);
-  };
+  // 面板与侧栏视图的 bridge 都只有 invoke(channel, payload)，payload 为对象
+  const invoke = (ch, payload) => bridge.invoke(ch, payload ?? {});
+
   const FILTERS = [
     { key: "active", label: "进行中" },
     { key: "cr", label: "CR 阶段" },
@@ -87,150 +87,66 @@
     { key: "all", label: "全部" },
   ];
   const CR_STATES = ["cr-agent", "cr-human", "cr-confirmed"];
-  const ACTIVE_EXCLUDE = ["released", "archived"];
+  const DONE_STATES = ["released", "archived"];
 
-  let allRows = [];
+  let allItems = [];
   let currentFilter = "active";
-
-  const ws = await call("workspace.get").catch(() => null);
-  document.getElementById("wsMeta").textContent = ws && ws.path ? ws.path : "当前工作区";
-
-  function parseFrontmatter(content) {
-    const m = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!m) return {};
-    const out = {};
-    for (const line of m[1].split("\n")) {
-      const kv = line.match(/^(\w[\w-]*)\s*:\s*(.*)$/);
-      if (kv) out[kv[1]] = kv[2].trim();
-    }
-    return out;
-  }
-
-  function parseMetric(content, name) {
-    const line = content.split("\n").find(l => l.trim().startsWith("|") && l.includes(name));
-    if (!line) return "-";
-    const cols = line.split("|").map(c => c.trim()).filter(c => c !== "");
-    const i = cols.findIndex(c => c === name);
-    return i >= 0 && cols[i + 1] !== undefined ? cols[i + 1] : "-";
-  }
-
-  function parseStatusLog(content) {
-    return content.split("\n")
-      .filter(l => /^\|\s*\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s*\|/.test(l))
-      .map(l => l.split("|").slice(1, -1).map(c => c.trim()))
-      .map(cols => ({ time: cols[0], from: cols[1], to: cols[2], by: cols[3], note: cols[4] }));
-  }
-
-  // 优先读跨项目注册中心镜像（插件每次变更时同步写入本工作区）
-  async function loadRegistryMirror() {
-    try {
-      const raw = await call("fs.readText", "requirements/.registry.json");
-      const reg = JSON.parse(raw);
-      if (!reg || !reg.requirements) return null;
-      return Object.entries(reg.requirements).map(([reqId, r]) => {
-        const blockedBy = (r.dependsOn || []).filter(d => {
-          const dep = reg.requirements[d];
-          return dep && !["released", "archived"].includes(dep.status);
-        });
-        return {
-          id: reqId, title: r.title || "-", status: r.status || "draft",
-          project: r.project || "-", owner: "-", updated: (r.updatedAt || "").slice(0, 10),
-          cr: "-", rework: "-", logs: [],
-          depCount: (r.dependsOn || []).length,
-          depWarn: blockedBy.length ? "依赖未发布：" + blockedBy.join("、") : null,
-        };
-      });
-    } catch (e) { return null; }
-  }
-
-  async function loadAll() {
-    const mirror = await loadRegistryMirror();
-    if (mirror && mirror.length) return mirror;
-    let entries;
-    try {
-      entries = await call("fs.glob", "requirements/REQ-*/00-meta.md");
-    } catch (e) {
-      try {
-        const list = await call("fs.list", "requirements");
-        entries = [];
-        for (const e of list) {
-          if (e.isDirectory && e.name.startsWith("REQ-")) entries.push(`requirements/${e.name}/00-meta.md`);
-        }
-      } catch (e2) { entries = []; }
-    }
-    const rows = [];
-    for (const p of entries) {
-      try {
-        const content = await call("fs.readText", p);
-        const fm = parseFrontmatter(content);
-        const dir = p.split("/").slice(0, -1).join("/");
-        rows.push({
-          id: fm.id || dir.split("/").pop(),
-          title: fm.title || "-",
-          status: fm.status || "draft",
-          owner: fm.owner || "-",
-          updated: fm.updated || "-",
-          cr: parseMetric(content, "CR 轮次"),
-          rework: parseMetric(content, "返工次数"),
-          logs: parseStatusLog(content),
-        });
-      } catch (e) { /* 跳过不可读 */ }
-    }
-    rows.sort((a, b) => (b.updated || "").localeCompare(a.updated || ""));
-    return rows;
-  }
-
-  function applyFilter(rows, key) {
-    if (key === "all") return rows;
-    if (key === "active") return rows.filter(r => !ACTIVE_EXCLUDE.includes(r.status));
-    if (key === "cr") return rows.filter(r => CR_STATES.includes(r.status));
-    if (key === "blocked") return rows.filter(r => r.status === "blocked" || r.status === "change-requested");
-    if (key === "released") return rows.filter(r => r.status === "released" || r.status === "archived");
-    return rows;
-  }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
-  function render() {
-    const rows = applyFilter(allRows, currentFilter);
-    const content = document.getElementById("content");
-    if (!rows.length) {
-      content.innerHTML = `<div class="empty">当前过滤条件下没有需求。<br/>用 /req-new 建档（会自动登记进跨项目注册中心）。</div>`;
-      return;
-    }
-    content.innerHTML = `<table>
-      <thead><tr>
-        <th>编号</th><th>标题</th><th>项目</th><th>状态</th><th>依赖</th><th>负责人</th>
-        <th style="text-align:right">CR轮次</th><th style="text-align:right">返工</th><th>更新</th>
-      </tr></thead>
-      <tbody>${rows.map((r, i) => `<tr data-i="${allRows.indexOf(r)}">
-        <td class="id">${esc(r.id)}</td>
-        <td class="title" title="${esc(r.title)}">${esc(r.title)}</td>
-        <td>${esc(r.project || "-")}</td>
-        <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
-        <td>${r.depWarn ? `<span class="badge change-requested" title="${esc(r.depWarn)}">⚠ 依赖未发布</span>` : (r.depCount ? esc(r.depCount + " 项") : "-")}</td>
-        <td>${esc(r.owner)}</td>
-        <td class="num">${esc(r.cr)}</td>
-        <td class="num ${parseInt(r.rework) > 0 ? "bad" : ""}">${esc(r.rework)}</td>
-        <td>${esc(r.updated)}</td>
-      </tr>`).join("")}</tbody>
-    </table>`;
-    for (const tr of content.querySelectorAll("tr[data-i]")) {
-      tr.addEventListener("click", () => showDetail(allRows[Number(tr.dataset.i)]));
-    }
+  function applyFilter(items, key) {
+    if (key === "all") return items;
+    if (key === "active") return items.filter(r => !DONE_STATES.includes(r.status));
+    if (key === "cr") return items.filter(r => CR_STATES.includes(r.status));
+    if (key === "blocked") return items.filter(r => r.status === "blocked" || r.status === "change-requested" || (r.blockedBy && r.blockedBy.length));
+    if (key === "released") return items.filter(r => DONE_STATES.includes(r.status));
+    return items;
   }
 
-  function showDetail(r) {
-    const d = document.getElementById("detail");
-    d.className = "detail show";
-    d.innerHTML = `<h2>${esc(r.id)} · 状态流转记录
-        <span class="close" id="detailClose">收起 ✕</span></h2>
-      ${r.logs.length ? r.logs.map(l => `<div class="logrow">
-        <span>${esc(l.time)}</span><span class="fromto">${esc(l.from)} → ${esc(l.to)}</span>
-        <span>${esc(l.by)}</span><span>${esc(l.note)}</span>
-      </div>`).join("") : '<div class="logrow">暂无流转记录</div>'}`;
-    document.getElementById("detailClose").addEventListener("click", () => { d.className = "detail"; });
-    d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  function rowHtml(r) {
+    const dep = (r.dependsOn && r.dependsOn.length)
+      ? (r.blockedBy && r.blockedBy.length
+          ? `<span class="badge dep-warn" title="依赖未发布：${esc(r.blockedBy.join("、"))}">⚠ ${r.blockedBy.length} 项未发布</span>`
+          : `<span class="badge">${r.dependsOn.length} 项已就绪</span>`)
+      : "-";
+    return `<tr>
+      <td class="id">${esc(r.reqId)}</td>
+      <td class="title" title="${esc(r.title)}">${esc(r.title)}</td>
+      <td class="proj">${esc(r.project)}</td>
+      <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
+      <td>${dep}</td>
+      <td>${esc(r.done ? "✓" : "")}</td>
+      <td>${esc((r.updatedAt || "").slice(0, 10))}</td>
+    </tr>`;
+  }
+
+  function render() {
+    const items = applyFilter(allItems, currentFilter);
+    const content = document.getElementById("content");
+    if (!items.length) {
+      content.innerHTML = `<div class="empty">当前过滤条件下没有需求。<br/>用 /req-new 建档（自动登记进跨项目注册中心）。</div>`;
+      return;
+    }
+    // 按项目分组
+    const byProject = {};
+    for (const it of items) (byProject[it.project] = byProject[it.project] || []).push(it);
+    const projects = Object.keys(byProject).sort();
+    let html = "";
+    for (const proj of projects) {
+      html += `<div class="proj-group">${esc(proj)}（${byProject[proj].length}）</div>
+        <table><thead><tr>
+          <th>编号</th><th>标题</th><th>状态</th><th>依赖</th><th>完成</th><th>更新</th>
+        </tr></thead><tbody>${byProject[proj].map(rowHtml).join("")}</tbody></table>`;
+    }
+    content.innerHTML = html;
+  }
+
+  async function load() {
+    const data = await invoke("dashboard.data");
+    allItems = data.items || [];
+    const meta = document.getElementById("meta");
+    meta.textContent = `共 ${data.total ?? allItems.length} 个需求 · ${data.currentProject || "当前项目"} · 更新于 ${(data.updatedAt || "").slice(0, 16).replace("T", " ")}`;
+    render();
   }
 
   const filtersEl = document.getElementById("filters");
@@ -246,11 +162,19 @@
     });
     filtersEl.appendChild(b);
   }
+  // 刷新按钮
+  const rb = document.createElement("button");
+  rb.textContent = "刷新";
+  rb.className = "refresh";
+  rb.addEventListener("click", load);
+  filtersEl.appendChild(rb);
 
-  allRows = await loadAll();
-  render();
+  await load();
 })().catch(e => {
-  document.getElementById("content").innerHTML = `<div class="error">加载失败：${String(e && e.message || e)}</div>`;
+  document.getElementById("content").innerHTML =
+    `<div class="error">加载失败：${esc(String(e && e.message || e))}</div>
+     <div class="hint">请确认插件「PI-Workflow Gates」已加载；看板数据来自插件进程的全局注册中心（dashboard.data 通道）。</div>`;
+  function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 });
 </script>
 </body>

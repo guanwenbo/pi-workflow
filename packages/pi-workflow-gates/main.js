@@ -686,4 +686,19 @@ async function onUnload() {
   await pi.commands.unregister(DASHBOARD_COMMAND);
 }
 
-module.exports = { onLoad, onUnload };
+/**
+ * 面板/侧栏视图的数据通道：invoke("dashboard.data")。
+ * 面板读不了工作区外的插件数据目录（fs 网关限 workspace 根），
+ * 由插件进程用原生 fs 读全局注册中心返回——天然全局，不受当前工作区限制。
+ */
+async function onPanelInvoke(channel, payload) {
+  if (channel === "dashboard.data") {
+    const data = await registryList();
+    const proj = await currentProject();
+    return { ...data, currentProject: proj.name, currentRoot: proj.root };
+  }
+  if (channel === "dashboard.ping") return { ok: true };
+  throw new Error(`unknown panel channel: ${channel}`);
+}
+
+module.exports = { onLoad, onUnload, onPanelInvoke };
