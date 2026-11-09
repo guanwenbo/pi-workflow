@@ -3,179 +3,562 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PI-Workflow 需求看板</title>
+<meta name="color-scheme" content="light dark" />
+<title>需求看板 · PI-Workflow</title>
 <style>
-  /* 深浅色自适应：不依赖宿主变量，用系统/宿主主题的 prefers-color-scheme */
-  :root {
-    --bg: #f5f6f8; --card: #ffffff; --border: #d9dcdf; --text: #1f2328;
-    --dim: #6a737d; --accent: #2f6fdb; --ok: #1a7f37; --warn: #9a6700;
-    --bad: #cf222e; --chip: #eef1f4;
+/* ================= 设计契约（自包含，不依赖宿主变量） =================
+ * 任务：pi-workflow 跨项目需求注册中心的看板面板（webview，无框架）。
+ * 主题：prefers-color-scheme 双套变量；[data-theme] 可强制覆盖（供预览/调试）。
+ * 节奏：4/8px 间距网格；卡片圆角 12px、控件 8px、徽章 999px；正文对比度 ≥ 7:1。
+ * 动效：只承载状态——hover/press 120ms ease-out（具体属性，不用全属性过渡简写）；
+ *       行入场 260ms 缓出 + 24ms 阶梯；prefers-reduced-motion 全部关闭。
+ * Do：徽章=色块底+同色深字+圆点；依赖告警红色醒目；当前项目组置顶并打「当前项目」标。
+ * Don't：不用浅灰当正文色；不用 overflow 遮布局错（窄屏改用换行布局而非裁剪）。
+ */
+:root {
+  --bg: #f2f4f7; --card: #ffffff; --card-2: #f6f8fa;
+  --border: #e4e8ed; --border-strong: #ccd4dd;
+  --text: #16191f; --text-2: #4d5764; --dim: #636d79;
+  --accent: #2563eb; --accent-fg: #1d4fd7; --accent-soft: #e9f0fe; --accent-border: #bcd2fb;
+  --hover: #edf1f6; --sel: #e9f1fe;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 2px 6px rgba(16, 24, 40, .06);
+  --focus: #2563eb;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+  --st-gray-bg: #eceff3;   --st-gray-fg: #525d6b;   --st-gray-bd: #d5dce3;
+  --st-orange-bg: #fdf1e0; --st-orange-fg: #b45309; --st-orange-bd: #f2d7b0;
+  --st-blue-bg: #e9f1fe;   --st-blue-fg: #1d55d6;   --st-blue-bd: #c1d6fb;
+  --st-purple-bg: #f2ebfd; --st-purple-fg: #7c3aed; --st-purple-bd: #dccaf9;
+  --st-teal-bg: #e0f5f2;   --st-teal-fg: #0d766e;   --st-teal-bd: #b8e5e0;
+  --st-green-bg: #e5f6eb;  --st-green-fg: #157f3c;  --st-green-bd: #c0e9cf;
+  --st-red-bg: #fdecec;    --st-red-fg: #c22626;    --st-red-bd: #f5c6c6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1015; --card: #151a22; --card-2: #1a212b;
+    --border: #262f3b; --border-strong: #35404e;
+    --text: #eceff4; --text-2: #b3bcc8; --dim: #8a94a1;
+    --accent: #5b93ff; --accent-fg: #8fb2ff; --accent-soft: rgba(91, 147, 255, .15); --accent-border: rgba(91, 147, 255, .38);
+    --hover: #1c242f; --sel: rgba(91, 147, 255, .14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 8px rgba(0, 0, 0, .3);
+    --focus: #5b93ff;
+    --st-gray-bg: #242c37;   --st-gray-fg: #a3aebc; --st-gray-bd: #364050;
+    --st-orange-bg: rgba(245, 158, 11, .14); --st-orange-fg: #f2b661; --st-orange-bd: rgba(245, 158, 11, .35);
+    --st-blue-bg: rgba(96, 150, 255, .16);  --st-blue-fg: #84aaff;   --st-blue-bd: rgba(96, 150, 255, .36);
+    --st-purple-bg: rgba(154, 116, 250, .16); --st-purple-fg: #b9a0fd; --st-purple-bd: rgba(154, 116, 250, .36);
+    --st-teal-bg: rgba(45, 212, 191, .13);  --st-teal-fg: #49d8c6;   --st-teal-bd: rgba(45, 212, 191, .32);
+    --st-green-bg: rgba(74, 222, 128, .13); --st-green-fg: #63df90;  --st-green-bd: rgba(74, 222, 128, .32);
+    --st-red-bg: rgba(248, 113, 113, .14);  --st-red-fg: #f89494;    --st-red-bd: rgba(248, 113, 113, .36);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1115; --card: #171a21; --border: #262b36; --text: #e6e9ef;
-      --dim: #8b93a3; --accent: #4f8cff; --ok: #34c77b; --warn: #e6a23c;
-      --bad: #e5534b; --chip: #262b36;
-    }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1015; --card: #151a22; --card-2: #1a212b;
+  --border: #262f3b; --border-strong: #35404e;
+  --text: #eceff4; --text-2: #b3bcc8; --dim: #8a94a1;
+  --accent: #5b93ff; --accent-fg: #8fb2ff; --accent-soft: rgba(91, 147, 255, .15); --accent-border: rgba(91, 147, 255, .38);
+  --hover: #1c242f; --sel: rgba(91, 147, 255, .14);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 2px 8px rgba(0, 0, 0, .3);
+  --focus: #5b93ff;
+  --st-gray-bg: #242c37;   --st-gray-fg: #a3aebc; --st-gray-bd: #364050;
+  --st-orange-bg: rgba(245, 158, 11, .14); --st-orange-fg: #f2b661; --st-orange-bd: rgba(245, 158, 11, .35);
+  --st-blue-bg: rgba(96, 150, 255, .16);  --st-blue-fg: #84aaff;   --st-blue-bd: rgba(96, 150, 255, .36);
+  --st-purple-bg: rgba(154, 116, 250, .16); --st-purple-fg: #b9a0fd; --st-purple-bd: rgba(154, 116, 250, .36);
+  --st-teal-bg: rgba(45, 212, 191, .13);  --st-teal-fg: #49d8c6;   --st-teal-bd: rgba(45, 212, 191, .32);
+  --st-green-bg: rgba(74, 222, 128, .13); --st-green-fg: #63df90;  --st-green-bd: rgba(74, 222, 128, .32);
+  --st-red-bg: rgba(248, 113, 113, .14);  --st-red-fg: #f89494;    --st-red-bd: rgba(248, 113, 113, .36);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 13px; line-height: 1.5;
+  background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  /* 顶部仅让出宿主标题栏，不再加别的顶部留白 */
+  padding: calc(var(--pi-plugin-titlebar-height, 46px) + 12px) 16px 32px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+
+/* ---------- 顶栏 ---------- */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 2px 14px; }
+.topbar h1 { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 650; letter-spacing: .01em; }
+.top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.meta { color: var(--text-2); font-size: 12px; }
+.meta .sep { color: var(--dim); margin: 0 6px; }
+
+.btn {
+  font: inherit; font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-2); background: var(--card);
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 5px 12px; cursor: pointer; white-space: nowrap;
+  transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 80ms ease-out;
+}
+.btn:hover { background: var(--hover); color: var(--text); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn[disabled] { opacity: .6; cursor: progress; }
+.refresh .ico { display: inline-flex; }
+.refresh.loading .ico { animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 过滤器 ---------- */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tab {
+  font: inherit; font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center;
+  color: var(--text-2); background: transparent;
+  border: 1px solid transparent; border-radius: 8px;
+  padding: 5px 10px; cursor: pointer;
+  transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out, transform 80ms ease-out;
+}
+.tab:hover { background: var(--hover); color: var(--text); }
+.tab:active { transform: translateY(1px); }
+.tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tab.active { background: var(--card); color: var(--accent-fg); border-color: var(--accent-border); box-shadow: var(--shadow); font-weight: 600; }
+.tab .cnt {
+  font-family: var(--mono); font-size: 11px; line-height: 16px;
+  margin-left: 7px; padding: 0 6px; border-radius: 999px;
+  color: var(--text-2); background: var(--card-2); border: 1px solid var(--border);
+}
+.tab.active .cnt { color: var(--accent-fg); background: var(--accent-soft); border-color: var(--accent-border); }
+
+/* ---------- 项目分组卡片 ---------- */
+.group {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+  animation: card-in 300ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(var(--gi, 0) * 50ms);
+}
+.group-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px; background: var(--card-2); border-bottom: 1px solid var(--border);
+}
+.group-name { font-weight: 650; font-size: 13px; }
+.group-count {
+  font-family: var(--mono); font-size: 11px; line-height: 16px; padding: 0 7px;
+  color: var(--text-2); background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+}
+.chip-current {
+  font-size: 10.5px; font-weight: 600; line-height: 16px; padding: 0 7px; border-radius: 999px;
+  color: var(--accent-fg); background: var(--accent-soft); border: 1px solid var(--accent-border);
+}
+
+/* ---------- 行（6 列稳定轨道） ---------- */
+.row {
+  display: grid; align-items: center; column-gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 116px 112px 36px 60px;
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  background: var(--card); cursor: pointer;
+  transition: background-color 120ms ease-out, box-shadow 120ms ease-out;
+  animation: row-in 260ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(var(--i, 0) * 24ms);
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--hover); }
+.row:active { background: var(--sel); }
+.row.selected { background: var(--sel); box-shadow: inset 3px 0 0 var(--accent); }
+.row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
+.row.head { padding-top: 6px; padding-bottom: 6px; cursor: default; animation: none; }
+.row.head:hover { background: var(--card); }
+.row.head .cell { color: var(--dim); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+
+.cell { min-width: 0; }
+.c-id {
+  font-family: var(--mono); font-size: 12px; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row.selected .c-id { color: var(--accent-fg); }
+.c-title { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-done { text-align: center; }
+.c-date { font-family: var(--mono); font-size: 11.5px; color: var(--text-2); text-align: right; white-space: nowrap; }
+
+/* ---------- 状态徽章：色块底 + 同色深字 + 圆点 ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; line-height: 18px; white-space: nowrap;
+  padding: 1px 9px; border-radius: 999px; border: 1px solid transparent;
+  background: var(--st-gray-bg); color: var(--st-gray-fg); border-color: var(--st-gray-bd);
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.badge.ph-design { background: var(--st-orange-bg); color: var(--st-orange-fg); border-color: var(--st-orange-bd); }
+.badge.ph-build  { background: var(--st-blue-bg);   color: var(--st-blue-fg);   border-color: var(--st-blue-bd); }
+.badge.ph-cr     { background: var(--st-purple-bg); color: var(--st-purple-fg); border-color: var(--st-purple-bd); }
+.badge.ph-ship   { background: var(--st-teal-bg);   color: var(--st-teal-fg);   border-color: var(--st-teal-bd); }
+.badge.ph-done   { background: var(--st-green-bg);  color: var(--st-green-fg);  border-color: var(--st-green-bd); }
+.badge.ph-alert  { background: var(--st-red-bg);    color: var(--st-red-fg);    border-color: var(--st-red-bd); }
+
+/* ---------- 依赖 / 完成 ---------- */
+.dep {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; line-height: 18px; white-space: nowrap;
+  padding: 1px 9px; border-radius: 999px; border: 1px solid transparent;
+}
+.dep-bad { background: var(--st-red-bg); color: var(--st-red-fg); border-color: var(--st-red-bd); }
+.dep-ok { background: var(--st-green-bg); color: var(--st-green-fg); border-color: var(--st-green-bd); }
+.dep-none { color: var(--dim); font-weight: 400; padding: 0; border: none; background: none; }
+.done-yes {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700;
+  background: var(--st-green-bg); color: var(--st-green-fg); border: 1px solid var(--st-green-bd);
+}
+.done-no { color: var(--dim); }
+
+/* ---------- 空态 / 错误 / 骨架 ---------- */
+.state-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 44px 24px; text-align: center;
+  animation: card-in 300ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.state-icon { font-size: 28px; margin-bottom: 10px; }
+.state-title { font-size: 14px; font-weight: 650; margin-bottom: 6px; }
+.state-desc { color: var(--text-2); font-size: 12px; max-width: 460px; margin: 0 auto 16px; }
+.state-desc code { font-family: var(--mono); font-size: 11px; background: var(--card-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.state-card.is-error .state-title { color: var(--st-red-fg); }
+
+.sk-row {
+  display: grid; align-items: center; column-gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 116px 112px 36px 60px;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+.sk-row:last-child { border-bottom: none; }
+.sk-row i {
+  display: block; height: 11px; border-radius: 6px; background: var(--hover);
+  animation: pulse 1.1s ease-in-out infinite alternate;
+}
+@keyframes pulse { from { opacity: .45; } to { opacity: 1; } }
+@keyframes row-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes card-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- 窄屏：行换行成两行卡片式布局，不做横向裁剪 ---------- */
+@media (max-width: 760px) {
+  body { padding-left: 12px; padding-right: 12px; }
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "id id status"
+      "title title title"
+      "dep done date";
+    row-gap: 6px; padding: 10px 12px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text); font-size: 13px;
-    padding: 16px 20px 24px;
+  .row.head { display: none; }
+  .c-id { grid-area: id; }
+  .c-title { grid-area: title; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .c-status { grid-area: status; justify-self: end; }
+  .c-dep { grid-area: dep; }
+  .c-done { grid-area: done; }
+  .c-date { grid-area: date; }
+  .sk-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .sk-row i:nth-child(n+3) { display: none; }
+}
+
+/* ---------- 降低动效 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
-  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 16px; font-weight: 600; }
-  header .meta { color: var(--dim); font-size: 12px; margin-left: auto; }
-  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .toolbar button {
-    background: var(--card); color: var(--text); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px;
-  }
-  .toolbar button.active { border-color: var(--accent); color: var(--accent); }
-  .toolbar button:hover { border-color: var(--accent); }
-  .refresh { margin-left: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { color: var(--dim); font-weight: 500; font-size: 12px; white-space: nowrap; }
-  tr:hover td { background: var(--chip); }
-  td.id { font-family: "SF Mono", Menlo, monospace; font-size: 12px; white-space: nowrap; }
-  td.title { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  td.proj { color: var(--dim); white-space: nowrap; }
-  .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px;
-    border: 1px solid var(--border); white-space: nowrap;
-  }
-  .badge.draft, .badge.clarifying { color: var(--dim); }
-  .badge.clarified, .badge.designing, .badge.reviewed { color: var(--warn); border-color: var(--warn); }
-  .badge.confirmed, .badge.planned, .badge.developing { color: var(--accent); border-color: var(--accent); }
-  .badge.cr-agent, .badge.cr-human { color: #8a4fd8; border-color: #8a4fd8; }
-  .badge.cr-confirmed, .badge.testing { color: #0e8a8a; border-color: #0e8a8a; }
-  .badge.ready-release, .badge.released { color: var(--ok); border-color: var(--ok); }
-  .badge.archived { color: var(--dim); border-color: var(--dim); opacity: 0.7; }
-  .badge.blocked, .badge.change-requested, .badge.dep-warn { color: var(--bad); border-color: var(--bad); }
-  .num { font-family: "SF Mono", Menlo, monospace; text-align: right; }
-  .num.bad { color: var(--bad); }
-  .empty { color: var(--dim); text-align: center; padding: 48px 0; }
-  .proj-group {
-    margin: 6px 0 2px; color: var(--dim); font-size: 12px; font-weight: 600;
-    padding: 4px 2px; border-bottom: 1px solid var(--border);
-  }
-  .error { color: var(--bad); padding: 12px; background: var(--card); border-radius: 8px; }
-  .hint { color: var(--dim); font-size: 12px; margin-top: 8px; }
+}
 </style>
 </head>
 <body>
-  <header>
-    <h1>需求看板</h1>
-    <span class="meta" id="meta">加载中…</span>
+<div class="wrap">
+  <header class="topbar">
+    <h1><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="2.5" width="5" height="15" rx="1.6" style="fill:var(--accent)" opacity=".9"/><rect x="8" y="2.5" width="5" height="9.5" rx="1.6" style="fill:var(--accent)" opacity=".55"/><rect x="14.5" y="2.5" width="4" height="6" rx="1.6" style="fill:var(--accent)" opacity=".3"/></svg>需求看板</h1>
+    <div class="top-right">
+      <span class="meta" id="meta">加载中…</span>
+      <button type="button" class="btn refresh" id="refresh-btn">
+        <span class="ico"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.6 2.2v2.6h-2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>刷新
+      </button>
+    </div>
   </header>
-  <div class="toolbar" id="filters"></div>
-  <div id="content"><div class="empty">加载中…</div></div>
+  <nav class="filters" id="filters" role="tablist" aria-label="状态过滤"></nav>
+  <main id="content" aria-live="polite"></main>
+</div>
 
 <script>
-(async () => {
-  const bridge = window.pluginBridge;
-  // 面板与侧栏视图的 bridge 都只有 invoke(channel, payload)，payload 为对象
-  const invoke = (ch, payload) => bridge.invoke(ch, payload ?? {});
+(function () {
+  "use strict";
 
-  const FILTERS = [
-    { key: "active", label: "进行中" },
-    { key: "cr", label: "CR 阶段" },
-    { key: "blocked", label: "异常" },
-    { key: "released", label: "已发布" },
-    { key: "all", label: "全部" },
+  /* ---------- 工具 ---------- */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function parseD(iso) { var d = new Date(iso); return isNaN(d.getTime()) ? null : d; }
+  function fmtDate(iso) { var d = parseD(iso); return d ? pad(d.getMonth() + 1) + "-" + pad(d.getDate()) : "—"; }
+  function fmtDateTime(iso) {
+    var d = parseD(iso);
+    return d ? d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) : (iso || "未知");
+  }
+
+  /* ---------- 状态机：中文标签 + 阶段分组配色 ---------- */
+  var STATUS_LABEL = {
+    "draft": "草稿", "clarifying": "澄清中", "clarified": "已澄清",
+    "designing": "设计中", "reviewed": "已评审", "confirmed": "已确认",
+    "planned": "已计划", "developing": "开发中",
+    "cr-agent": "CR-Agent", "cr-human": "CR-人工", "cr-confirmed": "CR-已确认",
+    "testing": "测试中", "ready-release": "待发布",
+    "released": "已发布", "archived": "已归档",
+    "blocked": "已阻塞", "change-requested": "变更请求"
+  };
+  var STATUS_PHASE = {
+    "draft": "early", "clarifying": "early", "clarified": "early",
+    "designing": "design", "reviewed": "design", "confirmed": "design",
+    "planned": "build", "developing": "build",
+    "cr-agent": "cr", "cr-human": "cr", "cr-confirmed": "cr",
+    "testing": "ship", "ready-release": "ship",
+    "released": "done", "archived": "done",
+    "blocked": "alert", "change-requested": "alert"
+  };
+  var CR_STATES = ["cr-agent", "cr-human", "cr-confirmed"];
+  var DONE_STATES = ["released", "archived"];
+  var FILTERS = [
+    { key: "active",   label: "进行中", emptyTitle: "进行中没有需求",       emptyDesc: "所有需求都已发布或归档。用 <code>/req-new</code> 建立新需求档案，会自动登记进跨项目注册中心。" },
+    { key: "cr",       label: "CR 阶段", emptyTitle: "CR 阶段没有需求",     emptyDesc: "当前没有处于 Agent / 人工评审中的需求。" },
+    { key: "blocked",  label: "异常",   emptyTitle: "没有异常需求 🎉",      emptyDesc: "没有被阻塞、被打回或依赖未发布的需求，节奏健康。" },
+    { key: "released", label: "已发布", emptyTitle: "还没有已发布的需求",   emptyDesc: "需求发布（released）或归档（archived）后会出现在这里。" },
+    { key: "all",      label: "全部",   emptyTitle: "暂无需求",             emptyDesc: "还没有登记任何需求。用 <code>/req-new</code> 建档，需求会自动登记进跨项目注册中心并显示在这里。" }
   ];
-  const CR_STATES = ["cr-agent", "cr-human", "cr-confirmed"];
-  const DONE_STATES = ["released", "archived"];
 
-  let allItems = [];
-  let currentFilter = "active";
+  /* ---------- 状态 ---------- */
+  var allItems = [];
+  var currentFilter = "active";
+  var currentProject = "";
+  var selectedId = null;
+  var loading = false;
 
-  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+  var $ = function (id) { return document.getElementById(id); };
+  var bridge = window.pluginBridge;
+  function invoke(channel, payload) {
+    if (!bridge || typeof bridge.invoke !== "function") {
+      return Promise.reject(new Error("pluginBridge 不可用：本页需在 PI-Desktop 的插件面板中打开。"));
+    }
+    return bridge.invoke(channel, payload || {});
+  }
 
+  /* ---------- 过滤 ---------- */
   function applyFilter(items, key) {
     if (key === "all") return items;
-    if (key === "active") return items.filter(r => !DONE_STATES.includes(r.status));
-    if (key === "cr") return items.filter(r => CR_STATES.includes(r.status));
-    if (key === "blocked") return items.filter(r => r.status === "blocked" || r.status === "change-requested" || (r.blockedBy && r.blockedBy.length));
-    if (key === "released") return items.filter(r => DONE_STATES.includes(r.status));
+    if (key === "active") return items.filter(function (r) { return DONE_STATES.indexOf(r.status) < 0; });
+    if (key === "cr") return items.filter(function (r) { return CR_STATES.indexOf(r.status) >= 0; });
+    if (key === "blocked") return items.filter(function (r) {
+      return r.status === "blocked" || r.status === "change-requested" || (r.blockedBy && r.blockedBy.length > 0);
+    });
+    if (key === "released") return items.filter(function (r) { return DONE_STATES.indexOf(r.status) >= 0; });
     return items;
   }
 
-  function rowHtml(r) {
-    const dep = (r.dependsOn && r.dependsOn.length)
-      ? (r.blockedBy && r.blockedBy.length
-          ? `<span class="badge dep-warn" title="依赖未发布：${esc(r.blockedBy.join("、"))}">⚠ ${r.blockedBy.length} 项未发布</span>`
-          : `<span class="badge">${r.dependsOn.length} 项已就绪</span>`)
-      : "-";
-    return `<tr>
-      <td class="id">${esc(r.reqId)}</td>
-      <td class="title" title="${esc(r.title)}">${esc(r.title)}</td>
-      <td class="proj">${esc(r.project)}</td>
-      <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td>
-      <td>${dep}</td>
-      <td>${esc(r.done ? "✓" : "")}</td>
-      <td>${esc((r.updatedAt || "").slice(0, 10))}</td>
-    </tr>`;
+  /* ---------- 片段 ---------- */
+  function badgeHtml(status) {
+    var s = String(status || "draft");
+    var ph = STATUS_PHASE[s] || "early";
+    var label = STATUS_LABEL[s] || s;
+    return '<span class="badge ph-' + ph + ' st-' + esc(s) + '" title="状态机值：' + esc(s) + '">' + esc(label) + '</span>';
+  }
+  function depHtml(r) {
+    var blocked = (r.blockedBy && r.blockedBy.length) ? r.blockedBy : null;
+    var deps = (r.dependsOn && r.dependsOn.length) ? r.dependsOn : null;
+    if (blocked) return '<span class="dep dep-bad" title="依赖未发布：' + esc(blocked.join("、")) + '">⚠ ' + blocked.length + ' 项未发布</span>';
+    if (deps) return '<span class="dep dep-ok" title="依赖均已发布：' + esc(deps.join("、")) + '">✓ ' + deps.length + ' 项已就绪</span>';
+    return '<span class="dep dep-none">-</span>';
+  }
+  function doneHtml(r) {
+    return r.done
+      ? '<span class="done-yes" title="已完成">✓</span>'
+      : '<span class="done-no" title="未完成">—</span>';
+  }
+  function rowHtml(r, i) {
+    var sel = selectedId === r.reqId;
+    return '<div class="row' + (sel ? " selected" : "") + '" data-reqid="' + esc(r.reqId) + '" tabindex="0" role="button" aria-pressed="' + (sel ? "true" : "false") + '" style="--i:' + Math.min(i, 12) + '">'
+      + '<span class="cell c-id" title="' + esc(r.reqId) + '">' + esc(r.reqId) + '</span>'
+      + '<span class="cell c-title" title="' + esc(r.title) + '">' + esc(r.title) + '</span>'
+      + '<span class="cell c-status">' + badgeHtml(r.status) + '</span>'
+      + '<span class="cell c-dep">' + depHtml(r) + '</span>'
+      + '<span class="cell c-done">' + doneHtml(r) + '</span>'
+      + '<span class="cell c-date" title="' + esc(fmtDateTime(r.updatedAt)) + '">' + esc(fmtDate(r.updatedAt)) + '</span>'
+      + '</div>';
+  }
+  function groupHtml(proj, list, gi) {
+    var sorted = list.slice().sort(function (a, b) {
+      return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+    });
+    return '<section class="group" style="--gi:' + Math.min(gi, 6) + '" aria-label="' + esc(proj) + '">'
+      + '<header class="group-head">'
+      + '<span class="group-name">' + esc(proj) + '</span>'
+      + '<span class="group-count">' + list.length + '</span>'
+      + (proj === currentProject ? '<span class="chip-current">当前项目</span>' : '')
+      + '</header>'
+      + '<div class="row head" aria-hidden="true">'
+      + '<span class="cell c-id">编号</span><span class="cell c-title">标题</span><span class="cell c-status">状态</span>'
+      + '<span class="cell c-dep">依赖</span><span class="cell c-done">完成</span><span class="cell c-date">更新</span>'
+      + '</div>'
+      + sorted.map(rowHtml).join("")
+      + '</section>';
+  }
+  function stateCard(opts) {
+    return '<div class="state-card' + (opts.error ? " is-error" : "") + '">'
+      + '<div class="state-icon">' + opts.icon + '</div>'
+      + '<div class="state-title">' + esc(opts.title) + '</div>'
+      + '<div class="state-desc">' + opts.desc + '</div>'
+      + (opts.action || '')
+      + '</div>';
+  }
+  function skeletonHtml() {
+    var row = '<div class="sk-row"><i style="width:52%"></i><i style="width:66%"></i><i style="width:72px"></i><i style="width:84px"></i><i style="width:18px;justify-self:center"></i><i style="width:40px;justify-self:end"></i></div>';
+    return '<section class="group" aria-busy="true">'
+      + '<header class="group-head"><span class="group-name" style="color:var(--dim)">加载中…</span></header>'
+      + row + row + row
+      + '</section>';
   }
 
+  /* ---------- 渲染 ---------- */
   function render() {
-    const items = applyFilter(allItems, currentFilter);
-    const content = document.getElementById("content");
-    if (!items.length) {
-      content.innerHTML = `<div class="empty">当前过滤条件下没有需求。<br/>用 /req-new 建档（自动登记进跨项目注册中心）。</div>`;
+    var content = $("content");
+    var items = applyFilter(allItems, currentFilter);
+    if (selectedId && !items.some(function (r) { return r.reqId === selectedId; })) selectedId = null;
+
+    if (!allItems.length) {
+      var f0 = FILTERS[4];
+      content.innerHTML = stateCard({ icon: "📋", title: f0.emptyTitle, desc: f0.emptyDesc });
       return;
     }
-    // 按项目分组
-    const byProject = {};
-    for (const it of items) (byProject[it.project] = byProject[it.project] || []).push(it);
-    const projects = Object.keys(byProject).sort();
-    let html = "";
-    for (const proj of projects) {
-      html += `<div class="proj-group">${esc(proj)}（${byProject[proj].length}）</div>
-        <table><thead><tr>
-          <th>编号</th><th>标题</th><th>状态</th><th>依赖</th><th>完成</th><th>更新</th>
-        </tr></thead><tbody>${byProject[proj].map(rowHtml).join("")}</tbody></table>`;
+    if (!items.length) {
+      var f = FILTERS.filter(function (x) { return x.key === currentFilter; })[0] || FILTERS[4];
+      content.innerHTML = stateCard({
+        icon: "🗂️", title: f.emptyTitle, desc: f.emptyDesc,
+        action: currentFilter !== "all" ? '<button type="button" class="btn" data-action="show-all">查看全部需求</button>' : ''
+      });
+      return;
     }
-    content.innerHTML = html;
+    var byProject = {};
+    items.forEach(function (it) {
+      var p = it.project || "（未标项目）";
+      (byProject[p] = byProject[p] || []).push(it);
+    });
+    var projects = Object.keys(byProject).sort(function (a, b) {
+      if (a === currentProject) return -1;
+      if (b === currentProject) return 1;
+      return a < b ? -1 : 1;
+    });
+    content.innerHTML = projects.map(function (p, gi) { return groupHtml(p, byProject[p], gi); }).join("");
   }
 
+  function renderError(e) {
+    $("content").innerHTML = stateCard({
+      icon: "⚠️", error: true, title: "看板加载失败",
+      desc: esc(String((e && e.message) || e)) + "<br/>请确认插件「PI-Workflow Gates」已加载；看板数据来自插件进程的全局注册中心（dashboard.data 通道）。",
+      action: '<button type="button" class="btn" data-action="retry">重试</button>'
+    });
+  }
+
+  function updateMeta(data) {
+    var total = (typeof data.total === "number") ? data.total : allItems.length;
+    $("meta").innerHTML = '共 <b>' + esc(total) + '</b> 个需求<span class="sep">·</span>'
+      + esc(currentProject || "全部项目") + '<span class="sep">·</span>更新于 ' + esc(fmtDateTime(data.updatedAt));
+  }
+
+  function updateTabCounts() {
+    tabBtns.forEach(function (b) {
+      var key = b.dataset.key;
+      var f = FILTERS.filter(function (x) { return x.key === key; })[0];
+      var n = applyFilter(allItems, key).length;
+      b.innerHTML = esc(f.label) + '<span class="cnt">' + n + '</span>';
+    });
+  }
+
+  /* ---------- 数据 ---------- */
   async function load() {
-    const data = await invoke("dashboard.data");
-    allItems = data.items || [];
-    const meta = document.getElementById("meta");
-    meta.textContent = `共 ${data.total ?? allItems.length} 个需求 · ${data.currentProject || "当前项目"} · 更新于 ${(data.updatedAt || "").slice(0, 16).replace("T", " ")}`;
+    if (loading) return;
+    loading = true;
+    var rb = $("refresh-btn");
+    rb.disabled = true;
+    rb.className = "btn refresh loading";
+    if (!allItems.length) $("content").innerHTML = skeletonHtml();
+    try {
+      var data = await invoke("dashboard.data");
+      if (!data || data.ok === false) throw new Error((data && data.error) || "dashboard.data 返回异常");
+      allItems = Array.isArray(data.items) ? data.items : [];
+      currentProject = data.currentProject || "";
+      updateMeta(data);
+      updateTabCounts();
+      render();
+    } catch (e) {
+      renderError(e);
+      $("meta").textContent = "加载失败";
+    } finally {
+      loading = false;
+      rb.disabled = false;
+      rb.className = "btn refresh";
+    }
+  }
+
+  /* ---------- 过滤器 tab ---------- */
+  var tabsEl = $("filters");
+  var tabBtns = [];
+  function switchFilter(key) {
+    if (currentFilter === key) return;
+    currentFilter = key;
+    tabBtns.forEach(function (x) {
+      var on = x.dataset.key === key;
+      x.className = "tab" + (on ? " active" : "");
+      x.setAttribute("aria-selected", on ? "true" : "false");
+    });
     render();
   }
+  FILTERS.forEach(function (f) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "tab" + (f.key === currentFilter ? " active" : "");
+    b.dataset.key = f.key;
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", f.key === currentFilter ? "true" : "false");
+    b.innerHTML = esc(f.label) + '<span class="cnt">–</span>';
+    b.addEventListener("click", function () { switchFilter(f.key); });
+    tabsEl.appendChild(b);
+    tabBtns.push(b);
+  });
 
-  const filtersEl = document.getElementById("filters");
-  for (const f of FILTERS) {
-    const b = document.createElement("button");
-    b.textContent = f.label;
-    if (f.key === currentFilter) b.className = "active";
-    b.addEventListener("click", () => {
-      currentFilter = f.key;
-      for (const x of filtersEl.children) x.className = "";
-      b.className = "active";
-      render();
+  /* ---------- 行选中 + 卡片动作（事件委托） ---------- */
+  function selectRow(id) {
+    selectedId = (selectedId === id) ? null : id;
+    var rows = $("content").querySelectorAll(".row[data-reqid]");
+    rows.forEach(function (r) {
+      var on = r.getAttribute("data-reqid") === selectedId;
+      r.classList.toggle("selected", on);
+      r.setAttribute("aria-pressed", on ? "true" : "false");
     });
-    filtersEl.appendChild(b);
   }
-  // 刷新按钮
-  const rb = document.createElement("button");
-  rb.textContent = "刷新";
-  rb.className = "refresh";
-  rb.addEventListener("click", load);
-  filtersEl.appendChild(rb);
+  var content = $("content");
+  content.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || typeof t.closest !== "function") return;
+    var act = t.closest("[data-action]");
+    if (act) {
+      var a = act.getAttribute("data-action");
+      if (a === "retry") load();
+      else if (a === "show-all") switchFilter("all");
+      return;
+    }
+    var row = t.closest(".row[data-reqid]");
+    if (row) selectRow(row.getAttribute("data-reqid"));
+  });
+  content.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var t = e.target;
+    if (!t || typeof t.closest !== "function") return;
+    var row = t.closest(".row[data-reqid]");
+    if (!row) return;
+    e.preventDefault();
+    selectRow(row.getAttribute("data-reqid"));
+  });
+  $("refresh-btn").addEventListener("click", load);
 
-  await load();
-})().catch(e => {
-  document.getElementById("content").innerHTML =
-    `<div class="error">加载失败：${esc(String(e && e.message || e))}</div>
-     <div class="hint">请确认插件「PI-Workflow Gates」已加载；看板数据来自插件进程的全局注册中心（dashboard.data 通道）。</div>`;
-  function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
-});
+  /* ---------- 启动 ---------- */
+  load();
+})();
 </script>
 </body>
 </html>
