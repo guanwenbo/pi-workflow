@@ -70,8 +70,15 @@
 <script>
 (async () => {
   const bridge = window.pluginBridge;
-  // 面板窗口用 .call(channel, arg)，侧边栏视图用 .invoke(channel, args)——归一化
-  const call = (ch, arg) => bridge.invoke ? bridge.invoke(ch, arg ?? {}) : call(ch, arg);
+  // 面板/侧栏视图的 bridge 都只有 invoke(channel, payload)——payload 为对象；
+  // fs 通道按宿主约定包装为 { path }，glob 为 { pattern }，list 为 { dir }
+  const call = (ch, arg) => {
+    let payload = {};
+    if (ch === "fs.readText" || ch === "fs.stat") payload = { path: arg };
+    else if (ch === "fs.glob") payload = { pattern: arg };
+    else if (ch === "fs.list") payload = { dir: arg };
+    return bridge.invoke(ch, payload);
+  };
   const FILTERS = [
     { key: "active", label: "进行中" },
     { key: "cr", label: "CR 阶段" },

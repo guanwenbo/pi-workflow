@@ -72,7 +72,8 @@ function nowMinute() {
 }
 
 async function exists(path) {
-  try { await pi.fs.stat(path); return true; } catch { return false; }
+  try { await pi.fs.stat(path); return true; } catch { /* 宿主 stat 不覆盖目录，用 list 兜底 */ }
+  try { await pi.fs.list(path); return true; } catch { return false; }
 }
 
 function metaPath(reqId) { return `requirements/${reqId}/00-meta.md`; }
