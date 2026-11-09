@@ -1020,11 +1020,18 @@ async function installGlobalCommandTemplates() {
 // 宿主的插件 API 只有 app/themes/plugin/commands/speech/ui/fs/agent，**没有安装/更新接口**，
 // 所以「自动更新」只能做到：读版本清单 → 比对 → 提示 →（可选）下载 .piplug，
 // 最后一步安装由用户在 Plugins 页面完成（宿主强制人工确认）。
-// 清单放仓库 main 分支：raw.githubusercontent 可读、不需要 token；发版脚本每次重写它。
-// 全插件唯一的外网访问就是这一条 GET，可用插件设置 autoUpdateCheck=false 关闭。
+// 清单随仓库发布：raw.githubusercontent 可读、不需要 token；发版脚本每次重写它。
+// 全插件唯一的外网访问就是这几条 GET，可用插件设置 autoUpdateCheck=false 关闭。
 
-const UPDATE_URL = process.env.PI_WORKFLOW_UPDATE_URL ||
-  "https://raw.githubusercontent.com/guanwenbo/pi-workflow/main/packages/pi-workflow-gates/latest.json";
+// 版本清单来源：raw.githubusercontent 按 URL 缓存（同一 ref 的旧内容可能滞留几分钟），
+// 且分支名不一定是 main，所以按顺序探测多个来源，取「成功且版本最高」的那一份。
+const UPDATE_URLS = process.env.PI_WORKFLOW_UPDATE_URL
+  ? [process.env.PI_WORKFLOW_UPDATE_URL]
+  : [
+      "https://github.com/guanwenbo/pi-workflow/releases/latest/download/latest.json", // 权威：随最新 Release 走
+      "https://raw.githubusercontent.com/guanwenbo/pi-workflow/master/packages/pi-workflow-gates/latest.json",
+      "https://raw.githubusercontent.com/guanwenbo/pi-workflow/main/packages/pi-workflow-gates/latest.json",
+    ];
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 function versionTuple(v) {
@@ -1110,21 +1117,42 @@ function fetchRaw(url, timeoutMs) {
  * 检查更新。force 忽略 24h 缓存；download 顺手把 .piplug 下到 ~/Downloads。
  * 失败只返回 ok=false，不抛错——离线必须照常可用。
  */
+/** 多源探测：全部失败才抛错；多份成功取版本最高（避开 CDN 旧缓存） */
+async function fetchBestManifest(urls) {
+  const errors = [];
+  let best = null;
+  for (const url of urls) {
+    try {
+      const info = await fetchJson(url, 8000);
+      if (!info || !info.version) throw new Error("清单缺少 version 字段");
+      if (!best || isNewerVersion(info.version, best.info.version)) best = { info, url };
+    } catch (e) {
+      errors.push(`${url} → ${e.message}`);
+    }
+  }
+  if (best) return best;
+  throw new Error(errors.join("；") || "没有可用的版本清单来源");
+}
+
+/**
+ * 检查更新。force 忽略 24h 缓存；download 顺手把 .piplug 下到 ~/Downloads。
+ * 失败只返回 ok=false，不抛错——离线必须照常可用。
+ */
 async function checkUpdate(args) {
   const { force, source, download } = args || {};
-  const url = source || UPDATE_URL;
   const current = currentPluginVersion();
   const prev = readUpdateState();
 
   if (!force && prev && prev.checkedAt && !prev.error) {
     const age = Date.now() - Date.parse(prev.checkedAt);
     if (Number.isFinite(age) && age < UPDATE_CHECK_INTERVAL_MS) {
-      return { ok: true, cached: true, current, latest: prev.latest, upToDate: prev.upToDate, downloadUrl: prev.downloadUrl || "", tag: prev.tag || "", notes: prev.notes || [], checkedAt: prev.checkedAt };
+      return { ok: true, cached: true, current, latest: prev.latest, upToDate: prev.upToDate, downloadUrl: prev.downloadUrl || "", tag: prev.tag || "", notes: prev.notes || [], checkedAt: prev.checkedAt, source: prev.source || "" };
     }
   }
 
   try {
-    const info = await fetchJson(url, 8000);
+    const picked = await fetchBestManifest(source ? [source] : UPDATE_URLS);
+    const info = picked.info;
     const latest = String(info.version || "0.0.0");
     const upToDate = !isNewerVersion(latest, current);
     const state = {
@@ -1133,6 +1161,7 @@ async function checkUpdate(args) {
       tag: info.tag || `v${latest}`,
       downloadUrl: info.downloadUrl || "",
       notes: Array.isArray(info.notes) ? info.notes : [],
+      source: picked.url,
       error: null,
     };
     writeUpdateState(state);
