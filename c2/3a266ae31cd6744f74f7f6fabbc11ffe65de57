@@ -1,0 +1,58 @@
+.pi/commands/req-adopt.md
+  h_b98c004121ae66 29,33,35
+.pi/prompts/breakdown.md
+  h_b98c004121ae66 1-10
+.pi/prompts/change.md
+  h_b98c004121ae66 1-10
+.pi/prompts/code-review.md
+  h_b98c004121ae66 1-10
+.pi/prompts/cr.md
+  h_b98c004121ae66 1-10
+.pi/prompts/design.md
+  h_b98c004121ae66 1-10
+.pi/prompts/dev.md
+  h_b98c004121ae66 1-10
+.pi/prompts/pre-release.md
+  h_b98c004121ae66 1-10
+.pi/prompts/req-adopt.md
+  h_b98c004121ae66 1-10
+.pi/prompts/req-clarify.md
+  h_b98c004121ae66 1-10
+.pi/prompts/req-derive.md
+  h_b98c004121ae66 1-10
+.pi/prompts/req-new.md
+  h_b98c004121ae66 1-10
+.pi/prompts/retro.md
+  h_b98c004121ae66 1-10
+.pi/prompts/review.md
+  h_b98c004121ae66 1-10
+.pi/prompts/risk.md
+  h_b98c004121ae66 1-10
+.pi/prompts/test-plan.md
+  h_b98c004121ae66 1-10
+README.md
+  h_b98c004121ae66 28
+docs/WORKFLOW.md
+  h_b98c004121ae66 29-32
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 17
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 332-342,369,1016
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5,254
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 87-91
+scripts/sync-prompts.sh
+  h_b98c004121ae66 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c23a266ae31cd6744f74f7f6fabbc11ffe65de57",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
