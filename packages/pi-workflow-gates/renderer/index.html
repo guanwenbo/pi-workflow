@@ -138,6 +138,11 @@ body {
   font-family: var(--mono); font-size: 11px; line-height: 16px; padding: 0 7px;
   color: var(--text-2); background: var(--card); border: 1px solid var(--border); border-radius: 999px;
 }
+.group-head.expandable { cursor: pointer; user-select: none; }
+.group-head.expandable:hover { background: var(--hover); }
+.group-head .chev { color: var(--dim); flex: none; transition: transform 150ms ease-out; }
+.group-head .chev.open { transform: rotate(90deg); }
+.group-body[hidden] { display: none; }
 .chip-current {
   font-size: 10.5px; font-weight: 600; line-height: 16px; padding: 0 7px; border-radius: 999px;
   color: var(--accent-fg); background: var(--accent-soft); border: 1px solid var(--accent-border);
@@ -331,6 +336,7 @@ body {
   var currentFilter = "active";
   var currentProject = "";
   var selectedId = null;
+  var expandedGroups = {};   // 关联组展开状态：root -> true/false（默认收起）
   var loading = false;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -418,17 +424,22 @@ body {
         + '<span class="cell c-date" title="' + esc(fmtDateTime(m.updatedAt)) + '">' + esc(fmtDate(m.updatedAt)) + '</span>'
         + '</div>';
     }).join("");
+    var expanded = !!expandedGroups[g.root];
+    var chevron = '<svg class="chev' + (expanded ? ' open' : '') + '" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5 10.5 8 5 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     return '<section class="group linked" style="--gi:' + Math.min(gi, 6) + '" aria-label="关联需求组">'
-      + '<header class="group-head">'
+      + '<header class="group-head expandable" data-group="' + esc(g.root) + '" role="button" tabindex="0" aria-expanded="' + (expanded ? "true" : "false") + '" title="点击' + (expanded ? '收起' : '展开') + '各侧子需求">'
+      + chevron
       + '<span class="group-name">' + esc(title) + '</span>'
       + '<span class="group-count">' + members.length + ' 侧</span>'
       + aggBadge
       + '</header>'
+      + '<div class="group-body"' + (expanded ? '' : ' hidden') + '>'
       + '<div class="row head" aria-hidden="true">'
       + '<span class="cell c-id">编号</span><span class="cell c-title">标题（侧·项目）</span><span class="cell c-status">状态</span>'
       + '<span class="cell c-dep">依赖</span><span class="cell c-done">完成</span><span class="cell c-date">更新</span>'
       + '</div>'
       + rows
+      + '</div>'
       + '</section>';
   }
 
@@ -613,6 +624,19 @@ body {
       var a = act.getAttribute("data-action");
       if (a === "retry") load();
       else if (a === "show-all") switchFilter("all");
+      return;
+    }
+    var ghead = t.closest(".group-head.expandable");
+    if (ghead) {
+      var root = ghead.getAttribute("data-group");
+      expandedGroups[root] = !expandedGroups[root];
+      var body = ghead.parentElement.querySelector(".group-body");
+      var open = !!expandedGroups[root];
+      if (body) body.hidden = !open;
+      var chev = ghead.querySelector(".chev");
+      if (chev) chev.className = "chev" + (open ? " open" : "");
+      ghead.setAttribute("aria-expanded", open ? "true" : "false");
+      ghead.setAttribute("title", "点击" + (open ? "收起" : "展开") + "各侧子需求");
       return;
     }
     var row = t.closest(".row[data-reqid]");
