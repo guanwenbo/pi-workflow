@@ -1,0 +1,28 @@
+.gitignore
+  h_b98c004121ae66 2-3
+README.md
+  h_b98c004121ae66 41-71
+packages/pi-workflow-gates/README.md
+  h_b98c004121ae66 32-40
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 156,296-331,333-334,341-346,348-350,365-377,379,382-386,934-938,940-941,965-969,981-996,1000,1006,1015
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 1-114
+scripts/build-scaffold.js
+  h_b98c004121ae66 1-76
+scripts/sync-install.sh
+  h_b98c004121ae66 2,4-5,7,13,20-22,26,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4d1d07282f9a622a70964de92d917461eb55991d",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
