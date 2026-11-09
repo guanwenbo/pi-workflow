@@ -1,0 +1,14 @@
+scripts/switch-to-release.sh
+  h_b98c004121ae66 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ec80d41993fe4f0503089a6518c86df2fad793eb",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
