@@ -138,6 +138,11 @@ function appendStatusLog(content, from, to, note) {
 const MIRROR_PATH = "requirements/.registry.json";
 const DONE_STATES = new Set(["released", "archived"]);
 
+// 注册中心存在插件自己的数据目录，用原生 fs 读写——pi.fs 是「工作区」权限网关，管不到插件数据目录；
+// 其他插件（clipboard-history / file-manager）写自己数据目录同样走原生 fs。镜像（工作区文件）仍走 pi.fs。
+const nodeFs = require("node:fs");
+const nodePath = require("node:path");
+
 async function registryFile() {
   const dataPath = await pi.plugin.getDataPath();
   return `${dataPath}/registry.json`;
@@ -145,7 +150,7 @@ async function registryFile() {
 
 async function readRegistry() {
   try {
-    const raw = await pi.fs.readText(await registryFile());
+    const raw = nodeFs.readFileSync(await registryFile(), "utf8"); // 原生 fs：插件数据目录不在 pi.fs 网关范围内
     const reg = JSON.parse(raw);
     if (reg && reg.requirements && typeof reg.requirements === "object") return reg;
   } catch { /* 不存在或损坏则重建 */ }
@@ -155,7 +160,9 @@ async function readRegistry() {
 async function writeRegistry(reg) {
   reg.updatedAt = new Date().toISOString();
   const raw = JSON.stringify(reg, null, 2);
-  await pi.fs.writeText(await registryFile(), raw);
+  const rf = await registryFile();
+  nodeFs.mkdirSync(nodePath.dirname(rf), { recursive: true });
+  nodeFs.writeFileSync(rf, raw); // 原生 fs：插件数据目录
   // 镜像到所有已登记项目的工作区（面板读这里；跨项目视图才一致）。
   // pi.fs 以当前工作区为根，跨项目写须走绝对路径——宿主网关按 manifest fs.write 范围放行。
   const seen = new Set();
