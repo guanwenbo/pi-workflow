@@ -1,0 +1,18 @@
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 75-76
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+packages/pi-workflow-gates/renderer/index.html
+  h_b98c004121ae66 73-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ebb9ed39de7dca56640c83831b13f22be8d996a2",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
