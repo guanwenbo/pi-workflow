@@ -11,6 +11,10 @@
 #
 # 执行后需要重启 PI-Desktop 才会按新路径加载（插件路径只在启动时解析）。
 set -euo pipefail
+# PATH_FIX：launchd / launchctl 提交的脚本没有登录 shell 的 PATH，必须显式补上
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -1)/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+NODE="$(command -v node || echo /opt/homebrew/bin/node)"
+[ -x "$NODE" ] || { echo "✘ 找不到 node（PATH=$PATH）" >&2; exit 1; }
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ID="gwb.pi-workflow-gates"
@@ -27,7 +31,7 @@ if [ "${1:-}" = "--from" ] && [ -n "${2:-}" ]; then
 fi
 
 [ -f "$DEST/manifest.json" ] || { echo "✘ 安装目录没有 manifest：$DEST" >&2; exit 1; }
-VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$DEST/manifest.json','utf8')).version)")"
+VERSION="$("$NODE" -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$DEST/manifest.json','utf8')).version)")"
 
 # 备份 registry（只留最近一份，避免堆垃圾）
 [ -f "$REG" ] && cp "$REG" "$REG.bak"
@@ -52,7 +56,7 @@ console.log(`   path: ${dest}`);
 NODE
 
 # 自检：安装目录内容与版本
-node -e '
+"$NODE" -e '
 const fs=require("fs"),p=require("path"),d=process.argv[1];
 const need=["main.js","manifest.json","renderer/index.html","scaffold.generated.js"];
 const miss=need.filter(f=>!fs.existsSync(p.join(d,f)));
