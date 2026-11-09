@@ -1,0 +1,18 @@
+scripts/apply-release-switch.sh
+  h_b98c004121ae66 1-40
+scripts/force-switch-to-release.sh
+  h_b98c004121ae66 1-51
+scripts/switch-to-release.sh
+  h_b98c004121ae66 14-17,34,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e0814a8143ba74043fa23535294cf92ffe7be6c0",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
