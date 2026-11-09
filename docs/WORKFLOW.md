@@ -26,9 +26,9 @@ change-requested：变更流程，审批通过后回流到对应阶段
 
 ## 四、命令速查表
 
-> **斜杠命令如何出现在 `/` 菜单里**：PI-Desktop 只扫描两处提示模板——项目级 `<工作区>/.pi/prompts/*.md`、用户级 `~/.pi/agent/prompts/*.md`；`.pi/commands/` 不参与菜单。
-> 因此 `.pi/prompts/` 的每个文件都是薄封装（frontmatter 取 `description` / `argument-hint`，正文指向 `.pi/commands/<name>.md` 权威定义）。
-> 改了命令定义**必须**重跑 `bash scripts/sync-prompts.sh`；命令增减后同样重跑（脚本按目录全量生成）。
+> **斜杠命令怎么进 `/` 菜单**：宿主只扫描两处提示模板——`<工作区>/.pi/prompts/*.md` 与 `~/.pi/agent/prompts/*.md`，且没有插件贡献点（`commands.register` 只登记可执行命令，不能注入 prompt）。
+> 因此本插件**加载时自动**把 `.pi/commands` 的每条命令渲染成自包含模板写进用户级目录：装一次、所有工作区可见，不需要任何额外操作。
+> 写保护：只覆盖带 `managed-by: gwb.pi-workflow-gates` 的文件；同名但非本插件管理的模板一律跳过。项目级 `.pi/prompts`（若有）优先级更高，可用于在某个仓覆盖命令行为。
 
 | 命令 | 阶段 | 角色 Agent | 核心产出 |
 |---|---|---|---|

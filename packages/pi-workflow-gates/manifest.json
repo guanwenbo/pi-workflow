@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "gwb.pi-workflow-gates",
   "name": "PI-Workflow Gates",
-  "version": "0.9.1",
-  "description": "pi-workflow 机械层门禁与跨项目承接：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）、跨项目依赖（registry_dep/registry_list）、一键接入新仓（adopt_project）、跨项目派生承接（req_derive）。门禁由代码物理执行。",
+  "version": "0.9.2",
+  "description": "pi-workflow 机械层门禁与跨项目承接：建档（req_init）、状态机校验与流转（state_check/state_transition）、EP-07 账本（metrics_record）、分层与域间依赖扫描（layer_scan）、变更编号自增（chg_next）、跨项目依赖（registry_dep/registry_list）、一键接入新仓（adopt_project）、跨项目派生承接（req_derive）。加载时自动把斜杠命令写入用户级 ~/.pi/agent/prompts（全局生效）。门禁由代码物理执行。",
   "main": "main.js",
-  "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。adopt_project / req_derive 会按显式目标路径写入另一个本地 git 仓库（同步命令与文档、投放承接简报），执行前会校验目标路径与接入状态，不删业务文件、不执行进程、不访问网络。",
+  "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录。插件加载时把斜杠命令模板写入用户级 ~/.pi/agent/prompts（只覆盖带 managed-by 标记的文件，绝不改用户自己的同名模板）。adopt_project / req_derive 会按显式目标路径写入另一个本地 git 仓库（同步命令与文档、投放承接简报），执行前会校验目标路径与接入状态，不删业务文件、不执行进程、不访问网络。",
   "contributes": {
     "agentTools": [
       {

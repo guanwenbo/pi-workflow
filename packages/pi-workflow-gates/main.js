@@ -152,6 +152,7 @@ const DONE_STATES = new Set(["released", "archived"]);
 // 其他插件（clipboard-history / file-manager）写自己数据目录同样走原生 fs。镜像（工作区文件）仍走 pi.fs。
 const nodeFs = require("node:fs");
 const nodePath = require("node:path");
+const nodeOs = require("node:os");
 
 async function registryFile() {
   const dataPath = await pi.plugin.getDataPath();
@@ -329,16 +330,6 @@ async function adoptProject(args) {
   nodeFs.cpSync(srcCmd, dstCmd, { recursive: true, force: true });
   checks.push(".pi/commands 已同步（" + nodeFs.readdirSync(dstCmd).length + " 个命令）");
 
-  // 1.1) 复制 .pi/prompts —— 宿主 `/` 命令面板只读这里的提示模板，不读 .pi/commands
-  // 没有这一层，接入方的命令在 PI-Desktop 里根本不会出现在斜杠菜单。
-  const srcPrompts = nodePath.join(srcRoot, ".pi", "prompts");
-  if (nodeFs.existsSync(srcPrompts)) {
-    const dstPrompts = nodePath.join(projectPath, ".pi", "prompts");
-    nodeFs.cpSync(srcPrompts, dstPrompts, { recursive: true, force: true });
-    checks.push(".pi/prompts 已同步（" + nodeFs.readdirSync(dstPrompts).length + " 个斜杠命令入口）");
-  } else {
-    checks.push(".pi/prompts 缺失（跳过）——请先在源仓执行 scripts/sync-prompts.sh");
-  }
 
   // 2) 复制 docs/（含 templates + 流程文档）
   nodeFs.cpSync(nodePath.join(srcRoot, "docs"), targetDocs, { recursive: true, force: true });
@@ -366,7 +357,6 @@ async function adoptProject(args) {
     nodePath.join(projectPath, "docs", "templates", "01-intake.md"),
     nodePath.join(projectPath, "docs", "templates", "00-meta.md"),
     nodePath.join(projectPath, ".pi", "commands", "req-new.md"),
-    nodePath.join(projectPath, ".pi", "prompts", "req-new.md"),
   ];
   for (const f of verify) {
     if (!nodeFs.existsSync(f)) throw new Error("自检失败，缺少：" + f);
@@ -884,6 +874,87 @@ async function metricsRecord(args) {
   return { ok: true, reqId, ...result };
 }
 
+// ---------- 斜杠命令全局外漏 ----------
+// 宿主 `/` 菜单的「提示词模板」只从两处读取：<工作区>/.pi/prompts 与 ~/.pi/agent/prompts，
+// 且**没有插件贡献点**（commands.register 只登记可执行命令，不能把 prompt 注入输入框）。
+// 所以插件加载时把命令写进用户级目录：装一次、所有工作区可见，不再需要每个仓跑脚本。
+// 安全边界：只覆盖带 MANAGED_MARK 的文件；同名但非本插件管理的文件一律跳过，绝不覆盖也不删除。
+
+const MANAGED_MARK = "managed-by: gwb.pi-workflow-gates";
+
+function globalPromptsDir() {
+  return nodePath.join(nodeOs.homedir(), ".pi", "agent", "prompts");
+}
+
+/** 把一份命令定义渲染成**自包含**模板：正文含完整命令文档，任何工作区都能直接执行 */
+function renderGlobalTemplate(filePath, version) {
+  const raw = nodeFs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n");
+  if (!raw.startsWith("---")) return null;
+  const fmEnd = raw.indexOf("\n---", 3);
+  if (fmEnd < 0) return null;
+  const fm = raw.slice(4, fmEnd);
+  const body = raw.slice(fmEnd + 4).trim();
+  if (!body) return null;
+
+  const name = nodePath.basename(filePath, ".md");
+  const descLine = (fm.match(/^description:\s*(.+)$/m) || [])[1] || `pi-workflow 命令 /${name}`;
+  const hintLine = (body.match(/^参数：\s*(.+)$/m) || [])[1] || "";
+  const description = descLine.trim().replace(/"/g, '\\"');
+  const hint = hintLine.replace(/`/g, "").replace(/（.*$/, "").trim().slice(0, 60).replace(/"/g, '\\"');
+
+  return [
+    "---",
+    `description: "${description}"`,
+    ...(hint ? [`argument-hint: "${hint}"`] : []),
+    MANAGED_MARK,
+    `plugin-version: "${version}"`,
+    "---",
+    body,
+    "",
+    "## 本次调用参数",
+    "",
+    "${@:-（未提供）}",
+    "",
+  ].join("\n");
+}
+
+/**
+ * 安装/刷新用户级斜杠命令。幂等：内容未变不写；同名非托管文件跳过。
+ * 不抛错——命令没装上也不能连带门禁工具不可用。
+ */
+async function installGlobalCommandTemplates() {
+  const srcRoot = resolveScaffoldRoot(null, null);
+  if (!srcRoot) return { ok: false, reason: "找不到命令源自（.pi/commands）" };
+  const cmdDir = nodePath.join(srcRoot, ".pi", "commands");
+  if (!nodeFs.existsSync(cmdDir)) return { ok: false, reason: "缺少 .pi/commands" };
+
+  let version = "unknown";
+  try {
+    const mf = pi.plugin.getManifest && pi.plugin.getManifest();
+    if (mf && mf.version) version = mf.version;
+  } catch { /* 拿不到版本不影响安装 */ }
+
+  const outDir = globalPromptsDir();
+  nodeFs.mkdirSync(outDir, { recursive: true });
+  const written = [], unchanged = [], skipped = [];
+  for (const name of nodeFs.readdirSync(cmdDir).filter(n => n.endsWith(".md")).sort()) {
+    const target = nodePath.join(outDir, name);
+    if (nodeFs.existsSync(target) && !nodeFs.readFileSync(target, "utf8").includes(MANAGED_MARK)) {
+      skipped.push(name); // 用户自己的同名模板：动它等于抢用户的命令名
+      continue;
+    }
+    const content = renderGlobalTemplate(nodePath.join(cmdDir, name), version);
+    if (!content) { skipped.push(name); continue; }
+    if (nodeFs.existsSync(target) && nodeFs.readFileSync(target, "utf8") === content) {
+      unchanged.push(name);
+      continue;
+    }
+    nodeFs.writeFileSync(target, content);
+    written.push(name);
+  }
+  return { ok: true, dir: outDir, version, written, unchanged, skipped };
+}
+
 // ---------- 注册 ----------
 
 const TOOLS = [
@@ -1013,7 +1084,7 @@ const TOOLS = [
   },
   {
     name: "adopt_project",
-    description: "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + .pi/prompts（宿主斜杠命令入口）+ docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
+    description: "一键接入：把目标 git 仓库接入 pi-workflow（同步 .pi/commands + docs/ + requirements/README.md，补 .gitignore 忽略镜像，自检三件套）。幂等：重复执行只覆盖同步，旧 docs 会备份。跨仓写入走原生 fs，因此需要在目标仓所在机器本地执行。新仓接入必须先调本工具，禁止手工复制目录。",
     risk: "high",
     schema: {
       type: "object",
@@ -1051,6 +1122,13 @@ async function onLoad() {
   for (const t of TOOLS) await pi.agent.registerTool(t);
   // 面板打开入口：命令面板搜「需求看板」
   await pi.commands.register({ id: DASHBOARD_COMMAND, title: "打开需求看板 / PI-Workflow Dashboard", run: () => pi.ui.openPanel() });
+  // 斜杠命令跟着插件走：装到用户级 prompts 目录，所有工作区可见；失败只记日志、不阻塞工具注册
+  try {
+    const r = await installGlobalCommandTemplates();
+    if (!r.ok) console.warn("[pi-workflow-gates] 斜杠命令未安装：", r.reason);
+  } catch (e) {
+    console.warn("[pi-workflow-gates] 斜杠命令安装异常：", e && e.message);
+  }
 }
 
 async function onUnload() {

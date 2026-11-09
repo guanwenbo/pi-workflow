@@ -22,7 +22,10 @@ const DATA = path.join(TMP, "pluginData");
 
 let WS = PARENT;
 const abs = p => (path.isAbsolute(p) ? p : path.join(WS, p));
-
+// HOME 指向临时目录：插件的用户级斜杠命令会写到 ~/.pi/agent/prompts，测试必须隔离，不能碰真实 home
+const HOME = path.join(TMP, "home");
+fs.mkdirSync(path.join(HOME, ".pi", "agent", "prompts"), { recursive: true });
+process.env.HOME = HOME;
 // 宿主 pi 的最小替身：pi.fs 以当前工作区为根（与真实网关语义一致）
 const TOOLS = {};
 global.pi = {
@@ -49,7 +52,11 @@ global.pi = {
     },
     glob: async () => [],
   },
-  plugin: { getDataPath: async () => DATA },
+  plugin: {
+    getDataPath: async () => DATA,
+    // 与宿主一致：模板里记录的插件版本来自 manifest
+    getManifest: () => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8")),
+  },
   workspace: { get: async () => ({ path: WS }) },
   agent: {
     registerTool: async t => { TOOLS[t.name] = t; },
@@ -67,28 +74,48 @@ const call = async (name, args) => {
 
 let passed = 0;
 const ok = msg => { passed++; console.log("  ✔ " + msg); };
-
 (async () => {
   for (const d of [PARENT, CHILD]) {
     fs.mkdirSync(path.join(d, ".git"), { recursive: true }); // adopt 只校验 .git 存在
   }
   fs.mkdirSync(DATA, { recursive: true });
 
+  // 用户自己已有的同名模板：插件必须绕开，不能抢占命令名
+  const userOwned = path.join(HOME, ".pi", "agent", "prompts", "req-new.md");
+  const userOwnedBody = "---\ndescription: my own req-new\n---\nmy content\n";
+  fs.writeFileSync(userOwned, userOwnedBody);
+
   const plugin = require("../main.js");
   await plugin.onLoad();
   assert.strictEqual(Object.keys(TOOLS).length, 10, "应注册 10 个工具");
   ok("插件加载：10 个工具全部注册");
 
+
+  // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
+  const gdir = path.join(HOME, ".pi", "agent", "prompts");
+  const isManaged = f => fs.readFileSync(path.join(gdir, f), "utf8").includes("managed-by: gwb.pi-workflow-gates");
+  const managed = fs.readdirSync(gdir).filter(f => f.endsWith(".md") && isManaged(f));
+  assert.strictEqual(managed.length, 14, "15 个命令中，除用户占用的 req-new 外应装 14 个");
+  assert.strictEqual(fs.readFileSync(userOwned, "utf8"), userOwnedBody, "不得覆盖用户自己的同名模板");
+  const tpl = fs.readFileSync(path.join(gdir, "req-derive.md"), "utf8");
+  assert.match(tpl, /^---\ndescription: "/, "模板必须有 frontmatter description");
+  assert.match(tpl, /argument-hint: "/, "模板应带参数提示");
+  assert.match(tpl, /plugin-version: "\d+\.\d+\.\d+"/, "模板应记录插件版本");
+  assert.match(tpl, /跨项目承接/, "正文应是自包含的命令文档");
+  assert.match(tpl, /\$\{@:-/, "正文应带参数占位");
+  ok("插件加载即全局安装斜杠命令：14 个新建、用户同名文件不动");
+
+  const mtimeBefore = managed.map(f => fs.statSync(path.join(gdir, f)).mtimeMs);
+  await plugin.onLoad();
+  const mtimeAfter = managed.map(f => fs.statSync(path.join(gdir, f)).mtimeMs);
+  assert.deepStrictEqual(mtimeAfter, mtimeBefore, "内容未变的模板不应重写");
+  ok("重复加载幂等：内容未变的模板不重写");
   // ---------- 1. 接入两个仓 ----------
   console.log("\n[1] adopt_project");
   const a1 = await call("adopt_project", { projectPath: CHILD });
   assert.ok(a1.ok);
   assert.ok(fs.existsSync(path.join(CHILD, ".pi", "commands", "req-new.md")), "应同步命令");
-  assert.ok(fs.existsSync(path.join(CHILD, ".pi", "prompts", "req-new.md")), "应同步斜杠命令入口（.pi/prompts）");
-  const promptBody = fs.readFileSync(path.join(CHILD, ".pi", "prompts", "req-derive.md"), "utf8");
-  assert.match(promptBody, /^---\ndescription: "/, "斜杠入口必须有 frontmatter description");
-  assert.match(promptBody, /\$\{@:-/, "斜杠入口应带参数占位");
-  assert.match(promptBody, /\.pi\/commands\/req-derive\.md/, "斜杠入口应指向权威定义");
+  assert.ok(!fs.existsSync(path.join(CHILD, ".pi", "prompts")), "项目级 prompts 已取消：命令由插件全局安装");
   assert.ok(fs.existsSync(path.join(CHILD, "docs", "templates", "00-meta.md")), "应同步模板");
   assert.ok(fs.existsSync(path.join(CHILD, "requirements", "README.md")), "应放 README");
   assert.match(fs.readFileSync(path.join(CHILD, ".gitignore"), "utf8"), /requirements\/\.registry\.json/);
