@@ -176,16 +176,10 @@ async function writeRegistry(reg) {
   const rf = await registryFile();
   nodeFs.mkdirSync(nodePath.dirname(rf), { recursive: true });
   nodeFs.writeFileSync(rf, raw); // 原生 fs：插件数据目录
-  // 镜像到所有已登记项目的工作区（面板读这里；跨项目视图才一致）。
-  // pi.fs 以当前工作区为根，跨项目写须走绝对路径——宿主网关按 manifest fs.write 范围放行。
-  const seen = new Set();
-  for (const r of Object.values(reg.requirements)) {
-    if (r.projectRoot && !seen.has(r.projectRoot)) {
-      seen.add(r.projectRoot);
-      try { await pi.fs.writeText(`${r.projectRoot}/${MIRROR_PATH}`, raw); } catch { /* 该项目当前不可写则跳过 */ }
-    }
-  }
-  // 兜底：当前工作区（无登记项目根时也尽量留一份）
+  // 镜像只写当前工作区这一个相对路径（落在 manifest fs.write 的 requirements/** 范围内，不触发授权框）。
+  // 不再往「其它已登记项目」写：那些路径在当前工作区之外，pi.fs 会把它当相对路径解析
+  // （实测拼成 <workspace>/Users/xxx/... 的错误路径），并且每次写都给每个项目弹一次授权框。
+  // 跨项目视图本来就不依赖这些镜像——面板的数据由 dashboard.data 直接读全局注册中心。
   try { await pi.fs.writeText(MIRROR_PATH, raw); } catch { /* best-effort */ }
 }
 /** 取当前工作区项目标识（名 + 根路径） */

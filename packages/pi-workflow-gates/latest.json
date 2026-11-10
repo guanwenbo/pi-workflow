@@ -1,11 +1,10 @@
 {
-  "version": "0.9.5",
-  "tag": "v0.9.5",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.5/gwb.pi-workflow-gates-0.9.5.piplug",
+  "version": "0.9.6",
+  "tag": "v0.9.6",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.6/gwb.pi-workflow-gates-0.9.6.piplug",
   "publishedAt": "2026-11-09T10:20:00.000Z",
   "notes": [
-    "更新检查改为多源探测（Release/latest、raw master、raw main），避开 CDN 旧缓存",
-    "新增 check_update 工具与命令「检查 PI-Workflow 插件更新」",
-    "版本纪律：每个版本一个 vX.Y.Z tag，使用方只装 tag 版"
+    "修复：写跨项目镜像时把绝对路径当相对路径，导致每次写注册中心都弹『写入声明范围之外的文件』授权框，并在各仓生成 <repo>/Users/... 垃圾目录",
+    "镜像改为只写当前工作区的 requirements/.registry.json（跨项目视图走 dashboard.data，不依赖镜像）"
   ]
 }
