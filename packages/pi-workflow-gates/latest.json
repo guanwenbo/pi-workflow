@@ -2,7 +2,7 @@
   "version": "0.9.6",
   "tag": "v0.9.6",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.6/gwb.pi-workflow-gates-0.9.6.piplug",
-  "publishedAt": "2026-11-09T10:20:00.000Z",
+  "publishedAt": "2026-11-10T06:31:53.867Z",
   "notes": [
     "修复：写跨项目镜像时把绝对路径当相对路径，导致每次写注册中心都弹『写入声明范围之外的文件』授权框，并在各仓生成 <repo>/Users/... 垃圾目录",
     "镜像改为只写当前工作区的 requirements/.registry.json（跨项目视图走 dashboard.data，不依赖镜像）"
