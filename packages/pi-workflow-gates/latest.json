@@ -2,7 +2,7 @@
   "version": "0.9.7",
   "tag": "v0.9.7",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.7/gwb.pi-workflow-gates-0.9.7.piplug",
-  "publishedAt": "2026-11-10T06:45:00.000Z",
+  "publishedAt": "2026-11-12T06:17:31.424Z",
   "notes": [
     "修复：在尚未接入 pi-workflow 的仓（如 Java 工程）里执行 /req-new 会报「找不到模板目录：docs/templates」——模板读取现在会回退到插件内嵌脚手架",
     "req_init 返回值新增 templateSource（工作区 / embedded）与 adopted；未接入仓会给出 warnings 提示执行 /req-adopt 补齐斜杠命令与文档模板"
