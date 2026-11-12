@@ -1055,6 +1055,12 @@ const UPDATE_URLS = process.env.PI_WORKFLOW_UPDATE_URL
       "https://raw.githubusercontent.com/guanwenbo/pi-workflow/main/packages/pi-workflow-gates/latest.json",
     ];
 const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// 加载后每隔这么久再查一次：App 常常连续开几天，只靠 onLoad 会一直不知道有新版。
+const UPDATE_TIMER_MS = 4 * 60 * 60 * 1000;
+const PLUGIN_ID = "gwb.pi-workflow-gates";
+// 仅供测试：绕过「必须装在 plugins/installed 下」的判据，把包解到指定目录。
+const SELF_UPDATE_DIR = process.env.PI_WORKFLOW_SELF_UPDATE_DIR || "";
+let updateTimer = null;
 
 function versionTuple(v) {
   return String(v || "")
@@ -1135,10 +1141,6 @@ function fetchRaw(url, timeoutMs) {
   });
 }
 
-/**
- * 检查更新。force 忽略 24h 缓存；download 顺手把 .piplug 下到 ~/Downloads。
- * 失败只返回 ok=false，不抛错——离线必须照常可用。
- */
 /** 多源探测：全部失败才抛错；多份成功取版本最高（避开 CDN 旧缓存） */
 async function fetchBestManifest(urls) {
   const errors = [];
@@ -1157,11 +1159,123 @@ async function fetchBestManifest(urls) {
 }
 
 /**
+ * 极简 ZIP 解包：.piplug 是 ZIP（PluginPack 用 store 方式打包）。
+ * 只支持 store(0) / deflate(8)，够用且不引第三方依赖。
+ */
+function extractZip(buf) {
+  let eocd = -1;
+  const floor = Math.max(0, buf.length - 22 - 65535);
+  for (let i = buf.length - 22; i >= floor; i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("不是 ZIP 包（找不到中央目录结尾）");
+  const count = buf.readUInt16LE(eocd + 10);
+  let off = buf.readUInt32LE(eocd + 16);
+  const out = [];
+  for (let n = 0; n < count; n++) {
+    if (buf.readUInt32LE(off) !== 0x02014b50) throw new Error("ZIP 中央目录项损坏");
+    const method = buf.readUInt16LE(off + 10);
+    const compSize = buf.readUInt32LE(off + 20);
+    const nameLen = buf.readUInt16LE(off + 28);
+    const extraLen = buf.readUInt16LE(off + 30);
+    const commentLen = buf.readUInt16LE(off + 32);
+    const localOff = buf.readUInt32LE(off + 42);
+    const name = buf.slice(off + 46, off + 46 + nameLen).toString("utf8");
+    off += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith("/")) continue; // 目录项
+    // 本地头里的名称/扩展区长度可能与中央目录不同，取数据必须按本地头算
+    const lNameLen = buf.readUInt16LE(localOff + 26);
+    const lExtraLen = buf.readUInt16LE(localOff + 28);
+    const dataStart = localOff + 30 + lNameLen + lExtraLen;
+    const raw = buf.slice(dataStart, dataStart + compSize);
+    let data;
+    if (method === 0) data = raw;
+    else if (method === 8) data = nodeZlib.inflateRawSync(raw);
+    else throw new Error(`不支持的压缩方式 ${method}（${name}）`);
+    out.push({ name, data });
+  }
+  return out;
+}
+
+/** 拒绝绝对路径与 .. 穿越：安装包里的路径必须落在插件目录内 */
+function safeEntryName(name) {
+  const n = String(name).replace(/\\/g, "/");
+  if (!n || n.startsWith("/") || /^[a-zA-Z]:/.test(n)) return null;
+  if (n.split("/").some(seg => seg === ".." || seg === "")) return null;
+  return n;
+}
+
+/** 是否装在正式安装目录：开发态（仓库里）不自我覆盖，交给 sync-install */
+function isInstalledLayout(dir) {
+  return /[\\/]plugins[\\/]installed[\\/]/.test(String(dir));
+}
+
+/**
+ * 把 .piplug 就地覆盖到插件目录。
+ * 为什么是「覆盖自己」：宿主给插件的 API 白名单里没有 install/reload，插件无法走官方安装通道，
+ * 只能把自己落盘，再由宿主重新加载。所以必须「写坏也能自查」——
+ * 先校验包身份与版本，写完再读回 manifest 比对，不一致就报错让用户重装。
+ */
+async function applyUpdate(pkgBuf, latest, targetDir) {
+  const dir = targetDir || SELF_UPDATE_DIR || __dirname;
+  if (!SELF_UPDATE_DIR && !isInstalledLayout(dir)) {
+    return { ok: false, skipped: "dev", reason: `当前不是正式安装目录（${dir}），开发态请用 scripts/sync-install.sh` };
+  }
+  const map = new Map();
+  for (const e of extractZip(pkgBuf)) {
+    const rel = safeEntryName(e.name);
+    if (!rel) throw new Error(`安装包含非法路径：${e.name}`);
+    map.set(rel, e.data);
+  }
+  const mf = map.get("manifest.json");
+  if (!mf) throw new Error("安装包缺少 manifest.json");
+  const meta = JSON.parse(mf.toString("utf8"));
+  if (meta.id !== PLUGIN_ID) throw new Error(`安装包属于别的插件：${meta.id}`);
+  if (String(meta.version) !== String(latest)) {
+    throw new Error(`安装包版本 ${meta.version} 与清单版本 ${latest} 不一致`);
+  }
+  let written = 0;
+  for (const [rel, data] of map) {
+    const dest = nodePath.join(dir, rel);
+    nodeFs.mkdirSync(nodePath.dirname(dest), { recursive: true });
+    nodeFs.writeFileSync(dest, data);
+    written += 1;
+  }
+  const check = JSON.parse(nodeFs.readFileSync(nodePath.join(dir, "manifest.json"), "utf8"));
+  if (String(check.version) !== String(latest)) {
+    throw new Error(`自检失败：磁盘版本 ${check.version} ≠ ${latest}，请从 Release 重装一次`);
+  }
+  return { ok: true, written, version: latest, dir };
+}
+
+/** 自动安装：拉包 → 就地覆盖 → 记录状态。失败只返回原因，不抛错。 */
+async function autoApplyUpdate(r) {
+  let settings = {};
+  try { settings = (await pi.plugin.getSettings()) || {}; } catch { settings = {}; }
+  if (settings.autoUpdate === false) return { ok: false, skipped: "disabled", reason: "插件设置 autoUpdate=false" };
+  if (!r || !r.downloadUrl) return { ok: false, skipped: "no-url", reason: "版本清单缺少 downloadUrl" };
+  const prev = readUpdateState() || {};
+  if (prev.applied && prev.applied.ok && String(prev.applied.version) === String(r.latest)) {
+    return { ok: true, alreadyApplied: true, version: r.latest, pendingReload: true };
+  }
+  try {
+    const buf = await fetchRaw(r.downloadUrl, 60000);
+    const res = await applyUpdate(buf, r.latest);
+    writeUpdateState({ ...prev, applied: res, appliedAt: new Date().toISOString(), notifiedFor: r.latest });
+    return res;
+  } catch (e) {
+    const res = { ok: false, error: `自动更新失败：${e.message}` };
+    writeUpdateState({ ...prev, applied: res, appliedAt: new Date().toISOString() });
+    return res;
+  }
+}
+
+/**
  * 检查更新。force 忽略 24h 缓存；download 顺手把 .piplug 下到 ~/Downloads。
  * 失败只返回 ok=false，不抛错——离线必须照常可用。
  */
 async function checkUpdate(args) {
-  const { force, source, download } = args || {};
+  const { force, source, download, apply } = args || {};
   const current = currentPluginVersion();
   const prev = readUpdateState();
 
@@ -1186,7 +1300,8 @@ async function checkUpdate(args) {
       source: picked.url,
       error: null,
     };
-    writeUpdateState(state);
+    // 合并旧状态：不能把 applied / notifiedFor 冲掉，否则每次检查完都会重复下载安装
+    writeUpdateState({ ...prev, ...state });
     const out = { ok: true, cached: false, ...state };
     if (download && !upToDate && state.downloadUrl) {
       try {
@@ -1201,7 +1316,14 @@ async function checkUpdate(args) {
         out.downloadError = `下载失败：${e.message}`;
       }
     } else if (!upToDate) {
-      out.next = `在 Plugins 页面 → Install package 安装 ${state.tag} 的 .piplug（或带 download=true 让插件自动下载到 ~/Downloads）`;
+      out.next = `插件会自动下载并就地更新到 ${latest}（重启 App 生效）；也可带 download=true 只下载到 ~/Downloads 手工安装`;
+    }
+    if (apply && !upToDate) {
+      const res = await autoApplyUpdate(out);
+      out.applied = res;
+      out.pendingReload = !!(res && res.ok);
+      if (res && res.ok) out.next = `已更新到 ${latest}：重启 App（或 Plugins 页点 Reload）后生效`;
+      else out.next = `未能自动更新：${(res && (res.reason || res.error || res.skipped)) || "未知原因"}`;
     }
     return out;
   } catch (e) {
@@ -1218,8 +1340,17 @@ async function autoCheckUpdate() {
     if (settings.autoUpdateCheck === false) return { skipped: true };
     const r = await checkUpdate({});
     if (!r.ok || r.upToDate) return r;
+    // 自动安装：拉到包就地覆盖自身，下次启动即新版本。
+    // 宿主没有给插件 install/reload 的 API，这一步只能自己落盘（见 applyUpdate 注释）。
+    const applied = await autoApplyUpdate(r);
+    if (applied && applied.ok && !applied.alreadyApplied) {
+      try {
+        await pi.ui.showToast(`PI-Workflow 已自动更新到 ${r.latest}：重启 App（或 Plugins 页 Reload）后生效`);
+      } catch { /* toast 失败无所谓 */ }
+      return { ...r, applied, notified: true };
+    }
     const prev = readUpdateState();
-    if (prev && prev.notifiedFor === r.latest) return { ...r, notified: false };
+    if (prev && prev.notifiedFor === r.latest) return { ...r, notified: false, applied };
     writeUpdateState({ ...prev, ...r, notifiedFor: r.latest });
     try {
       await pi.ui.showToast(`PI-Workflow 插件有新版本 ${r.latest}（当前 ${r.current}）：命令面板搜「检查插件更新」`);
@@ -1392,13 +1523,14 @@ const TOOLS = [
   },
   {
     name: "check_update",
-    description: "检查插件版本：读取版本清单（默认仓库 main 分支的 latest.json）与本机 manifest 比对，返回 current/latest/upToDate/downloadUrl/notes。force 忽略 24h 缓存；download=true 时把新版 .piplug 下到 ~/Downloads（最后一步安装仍需用户在 Plugins 页面确认，宿主没有静默安装 API）。离线时返回 ok=false 且不影响本地功能。",
+    description: "检查插件版本：读取版本清单（Release 的 latest.json，多源探测）与本机 manifest 比对，返回 current/latest/upToDate/downloadUrl/notes。插件加载时及每 4 小时会自动检查，并在发现新版时自动下载 .piplug 就地覆盖安装目录（重启 App 或 Plugins 页 Reload 后生效，因为宿主未给插件 install/reload API）。apply=true 立即执行一次自动更新；download=true 只把包下到 ~/Downloads；force 忽略 24h 缓存。离线时返回 ok=false 且不影响本地功能。",
     risk: "low",
     schema: {
       type: "object",
       properties: {
         force: { type: "boolean", description: "忽略 24 小时缓存，强制联网检查" },
         download: { type: "boolean", description: "发现新版本时顺手下载 .piplug 到 ~/Downloads" },
+        apply: { type: "boolean", description: "发现新版本时立即下载并就地更新（重启后生效）；默认由加载时与周期检查自动执行" },
         source: { type: "string", description: "覆盖版本清单地址（测试或内网镜像用；生产留空）" },
       },
     },
@@ -1446,9 +1578,15 @@ async function onLoad() {
     updateStatePathCache = nodePath.join(dataPath, "update-check.json");
   } catch { /* 拿不到就只联网检查、不落状态 */ }
   await autoCheckUpdate();
+  // 长时间不关 App 也要能发现新版：每 4 小时复查一次（内部 24h 节流，不会频繁联网）
+  if (!updateTimer) {
+    updateTimer = setInterval(() => { autoCheckUpdate().catch(() => {}); }, UPDATE_TIMER_MS);
+    if (updateTimer.unref) updateTimer.unref();
+  }
 }
 
 async function onUnload() {
+  if (updateTimer) { clearInterval(updateTimer); updateTimer = null; }
   for (const t of TOOLS) await pi.agent.unregisterTool(t.name);
   await pi.commands.unregister(DASHBOARD_COMMAND);
   await pi.commands.unregister(CHECK_UPDATE_COMMAND);
