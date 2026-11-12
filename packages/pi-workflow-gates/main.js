@@ -678,16 +678,30 @@ async function reqInit(args) {
   const dir = `requirements/${reqId}`;
   if (await exists(dir)) throw new Error(`需求档案已存在：${dir}`);
 
+  // 模板来源：先看当前工作区有没有工作流资产（已接入的仓），没有就回退到插件内嵌脚手架。
+  // 为什么要回退：req_init 明确允许在「尚未接入」的仓里直接建档（Java 工程常见），
+  // 那时工作区没有 docs/templates，只认文件系统会直接建档失败，用户被迫先跑 adopt。
   const tplCandidates = ["docs/templates", "workflow/templates"];
   let tplDir = null;
   for (const c of tplCandidates) {
-    if (await exists(c)) { tplDir = c; break; }
+    if (await exists(`${c}/00-meta.md`)) { tplDir = c; break; }
   }
-  if (!tplDir) throw new Error("找不到模板目录：docs/templates（旧布局 workflow/templates）");
+  const embedded = readEmbeddedScaffold();
+  const tplOf = async (name) => {
+    if (tplDir) {
+      try { return await pi.fs.readText(`${tplDir}/${name}`); } catch { /* 工作区单文件缺失：走内嵌兜底 */ }
+    }
+    const hit = embedded && (embedded[`docs/templates/${name}`] || embedded[`workflow/templates/${name}`]);
+    if (hit) return hit;
+    throw new Error(
+      `找不到模板 ${name}：工作区既无 docs/templates，插件内嵌脚手架也不可用` +
+      `（开发态请先执行 node scripts/build-scaffold.js；已安装版请重装插件）`
+    );
+  };
   const [metaTpl, intakeTpl, summaryTpl] = await Promise.all([
-    pi.fs.readText(`${tplDir}/00-meta.md`),
-    pi.fs.readText(`${tplDir}/01-intake.md`),
-    pi.fs.readText(`${tplDir}/summary.md`),
+    tplOf("00-meta.md"),
+    tplOf("01-intake.md"),
+    tplOf("summary.md"),
   ]);
 
   const d = today();
@@ -705,7 +719,21 @@ async function reqInit(args) {
   // 建档即登记进跨项目注册中心（编号全局唯一由此保证）
   await registryRegister(reqId, { status: "draft", title });
 
-  return { ok: true, reqId, dir, status: "draft", files: ["00-meta.md", "01-intake.md", "SUMMARY.md"] };
+  // 未接入仓也能建档，但要明确告知「缺什么、怎么补」，否则用户会以为工作流已经可用。
+  const onboarded = (await exists(".pi/commands")) && (await exists("docs/templates"));
+  return {
+    ok: true,
+    reqId,
+    dir,
+    status: "draft",
+    files: ["00-meta.md", "01-intake.md", "SUMMARY.md"],
+    templateSource: tplDir || "embedded",
+    adopted: onboarded,
+    warnings: onboarded
+      ? await depWarnings(reqId)
+      : [`该仓尚未接入 pi-workflow（无 .pi/commands 或 docs/templates）：本次已用插件内嵌模板建档；` +
+         `要启用完整工作流（斜杠命令 + 文档模板）请执行 /req-adopt ${"<本仓绝对路径>"}`],
+  };
 }
 
 async function stateCheck(args) {

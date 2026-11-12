@@ -227,6 +227,24 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   );
   ok("目标仓名无法解析：拒绝并提示用绝对路径");
 
+  // ---------- 7. 未接入仓建档：模板回退到插件内嵌脚手架 ----------
+  // 真实场景：在一个 Java 工程里直接跑 /req-new，该仓还没有 docs/templates。
+  console.log("\n[7] 未接入仓建档（内嵌模板兜底）");
+  const jvmRepo = path.join(TMP, "jvmRepo");
+  fs.mkdirSync(path.join(jvmRepo, ".git"), { recursive: true });
+  const prevWS = WS;
+  WS = jvmRepo;
+  const bare = await call("req_init", { title: "七鲜双端会员", slug: "qixian-dual-end-member" });
+  assert.strictEqual(bare.templateSource, "embedded", "无 docs/templates 时应回退内嵌脚手架");
+  assert.strictEqual(bare.adopted, false, "未接入仓应标记 adopted=false");
+  assert.ok(bare.warnings.some(w => /尚未接入 pi-workflow/.test(w)), "应提示先 /req-adopt");
+  assert.match(
+    fs.readFileSync(path.join(jvmRepo, bare.dir, "00-meta.md"), "utf8"),
+    /REQ-\d{8}-qixian-dual-end-member/
+  );
+  WS = prevWS;
+  ok("未接入仓建档成功：模板取自内嵌脚手架，并提示补接入");
+
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {
   console.error("\n✘ 测试失败：", err && err.message);
