@@ -1,0 +1,14 @@
+scripts/release.sh
+  h_b98c004121ae66 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "699cd90d2ac3bd5ef4a8f490f668081ce4f32a99",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
