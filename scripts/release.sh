@@ -87,7 +87,7 @@ if gh auth status >/dev/null 2>&1; then
   # 附件两件：.piplug（安装用）+ latest.json（更新检查的权威源，releases/latest/download/latest.json）
   gh release create "$TAG" "$ASSET" "$PKG/latest.json" \
     --title "PI-Workflow Gates $TAG" \
-    --notes "安装：Plugins 页面 → Install package → 选 $(basename "$ASSET")；或让已装旧版的用户执行命令「检查插件更新」。" \
+    --notes "安装：Plugins 页面 → Install package → 选 $(basename "$ASSET")；或让已装旧版的用户执行命令「检查插件更新」。"
   echo "✓ Release 已创建：https://github.com/$REPO/releases/tag/$TAG"
 else
   echo "⚠ gh 未登录，Release 未创建。执行以下命令补建（只需一次登录）：" >&2
