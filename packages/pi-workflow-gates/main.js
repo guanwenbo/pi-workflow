@@ -1245,7 +1245,36 @@ async function applyUpdate(pkgBuf, latest, targetDir) {
   if (String(check.version) !== String(latest)) {
     throw new Error(`自检失败：磁盘版本 ${check.version} ≠ ${latest}，请从 Release 重装一次`);
   }
-  return { ok: true, written, version: latest, dir };
+  const registry = syncHostRegistry(dir, latest);
+  return { ok: true, written, version: latest, dir, registry };
+}
+
+/**
+ * 把宿主的插件登记（~/.pi-desktop/plugins/registry.json）里的版本号刷新成本次安装的版本。
+ * 为什么需要：宿主只在「它自己完成的安装/更新」时改这个记录，插件自己覆盖文件它不知道，
+ * 于是 Plugins 页会一直显示旧版本（实测 0.9.8 在跑、页面却写 0.9.5），用户以为没更新。
+ * 只改本插件这一条、只改 version/updatedAt；原子写（临时文件 + rename），失败不影响主流程。
+ */
+function syncHostRegistry(pluginDir, version) {
+  try {
+    const regPath = nodePath.resolve(pluginDir, "..", "..", "registry.json");
+    if (!nodeFs.existsSync(regPath)) return { ok: false, reason: "找不到 registry.json" };
+    const raw = nodeFs.readFileSync(regPath, "utf8");
+    const doc = JSON.parse(raw);
+    const list = Array.isArray(doc) ? doc : doc.plugins;
+    if (!Array.isArray(list)) return { ok: false, reason: "registry.json 结构不认识" };
+    const rec = list.find(p => p && p.id === PLUGIN_ID);
+    if (!rec) return { ok: false, reason: "登记里没有本插件" };
+    if (String(rec.version) === String(version)) return { ok: true, unchanged: true };
+    rec.version = version;
+    rec.updatedAt = new Date().toISOString();
+    const tmp = `${regPath}.self-update-${process.pid}`;
+    nodeFs.writeFileSync(tmp, JSON.stringify(doc, null, 2));
+    nodeFs.renameSync(tmp, regPath);
+    return { ok: true, version };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
 }
 
 /** 自动安装：拉包 → 就地覆盖 → 记录状态。失败只返回原因，不抛错。 */
@@ -1607,4 +1636,4 @@ async function onPanelInvoke(channel, payload) {
   throw new Error(`unknown panel channel: ${channel}`);
 }
 
-module.exports = { onLoad, onUnload, onPanelInvoke };
+module.exports = { __test: { syncHostRegistry, extractZip, applyUpdate }, onLoad, onUnload, onPanelInvoke };

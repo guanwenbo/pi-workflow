@@ -15,6 +15,12 @@ const assert = require("node:assert");
 
 const PKG = path.resolve(__dirname, "..");
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "piw-update-"));
+// 版本基准跟着 manifest 走：写死某个版本号后，插件一升到那个版本测试就失效
+const PKG_VERSION = JSON.parse(fs.readFileSync(path.join(PKG, "manifest.json"), "utf8")).version;
+const [V_MAJOR, V_MINOR, V_PATCH] = PKG_VERSION.split(".").map(Number);
+const NEWER = `${V_MAJOR}.${V_MINOR}.${V_PATCH + 1}`;
+const BIGGER = `${V_MAJOR}.${V_MINOR + 1}.0`;
+const OLDER = "0.0.1";
 const HOME = path.join(TMP, "home");
 const DATA = path.join(TMP, "pluginData");
 const LATEST = path.join(TMP, "latest.json");
@@ -73,7 +79,7 @@ function buildZip(entries) {
 const pkgManifest = (version, id) => JSON.stringify({ schemaVersion: 1, id, version, main: "main.js" });
 
 const writeLatest = obj => fs.writeFileSync(LATEST, JSON.stringify(obj));
-writeLatest({ version: "0.9.9", tag: "v0.9.9", downloadUrl: `file://${TMP}/fake.piplug`, notes: ["测试更新"] });
+writeLatest({ version: NEWER, tag: "v0.9.9", downloadUrl: `file://${TMP}/fake.piplug`, notes: ["测试更新"] });
 fs.writeFileSync(path.join(TMP, "fake.piplug"), "fake-package-bytes");
 
 const TOOLS = {};
@@ -108,38 +114,41 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   // 加载时的静默检查已发现新版并提示过一次
   const state1 = JSON.parse(fs.readFileSync(path.join(DATA, "update-check.json"), "utf8"));
-  assert.strictEqual(state1.latest, "0.9.9");
-  assert.strictEqual(state1.notifiedFor, "0.9.9", "应记录已提示版本，避免每次启动重复打扰");
+  assert.strictEqual(state1.latest, NEWER);
+  assert.strictEqual(state1.notifiedFor, NEWER, "应记录已提示版本，避免每次启动重复打扰");
   ok("加载时静默检查：记录最新版并只提示一次（toast " + toasts.length + " 条）");
 
   // 缓存命中：24h 内不再联网
   const cached = await TOOLS.check_update.execute({});
   assert.strictEqual(cached.cached, true, "24h 内应走缓存");
-  assert.strictEqual(cached.latest, "0.9.9");
+  assert.strictEqual(cached.latest, NEWER);
   ok("24 小时缓存命中，不重复联网");
 
   // force 重新检查 + 下载
   const forced = await TOOLS.check_update.execute({ force: true, download: true });
   assert.strictEqual(forced.upToDate, false);
   assert.ok(forced.downloadedTo && fs.existsSync(forced.downloadedTo), "应下载到本地");
-  assert.match(forced.downloadedTo, /Downloads\/gwb\.pi-workflow-gates-0\.9\.9\.piplug$/);
+  assert.match(
+    forced.downloadedTo,
+    new RegExp(`Downloads/gwb\\.pi-workflow-gates-${NEWER.replace(/\./g, "\\.")}\\.piplug$`)
+  );
   assert.match(forced.next, /Install package/);
   ok("force 检查 + 自动下载新版到 ~/Downloads，并给出安装指引");
 
   // 已是最新
-  writeLatest({ version: "0.9.4", tag: "v0.9.4", downloadUrl: "" });
+  writeLatest({ version: PKG_VERSION, tag: `v${PKG_VERSION}`, downloadUrl: "" });
   const same = await TOOLS.check_update.execute({ force: true });
   assert.strictEqual(same.upToDate, true, "同版本应判定为最新");
-  ok("同版本判定为已最新（不误报）");
+  ok(`同版本（${PKG_VERSION}）判定为已最新（不误报）`);
 
   // 语义化比较：0.9.10 > 0.9.9（不能按字符串比）
-  writeLatest({ version: "0.9.10" });
+  writeLatest({ version: BIGGER });
   const newer = await TOOLS.check_update.execute({ force: true });
-  assert.strictEqual(newer.upToDate, false, "0.9.10 应大于 0.9.9 与本机 0.9.4");
-  ok("版本按数字段比较（0.9.10 > 0.9.9），不是字符串比较");
+  assert.strictEqual(newer.upToDate, false, `${BIGGER} 应大于本机 ${PKG_VERSION}（数字段比较）`);
+  ok(`版本按数字段比较（${BIGGER} > ${PKG_VERSION}），不是字符串比较`);
 
   // 降级版本不应提议升级
-  writeLatest({ version: "0.9.3" });
+  writeLatest({ version: OLDER });
   const older = await TOOLS.check_update.execute({ force: true });
   assert.strictEqual(older.upToDate, true, "清单版本更旧时不应提示升级");
   ok("清单版本旧于本机时不提示升级");
@@ -164,16 +173,16 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   // 正常路径：装到 selfUpdateTarget（模拟 plugins/installed 布局）
   const goodPkg = path.join(TMP, "good.piplug");
   writePkg(goodPkg, {
-    "manifest.json": pkgManifest("0.9.9", "gwb.pi-workflow-gates"),
+    "manifest.json": pkgManifest(NEWER, "gwb.pi-workflow-gates"),
     "main.js": "// new main\nmodule.exports = {};\n",
     "renderer/index.html": "<html>new panel</html>",
   });
-  writeLatest({ version: "0.9.9", tag: "v0.9.9", downloadUrl: `file://${goodPkg}` });
+  writeLatest({ version: NEWER, tag: "v0.9.9", downloadUrl: `file://${goodPkg}` });
   const applied = await TOOLS.check_update.execute({ force: true, apply: true });
   assert.strictEqual(applied.upToDate, false);
   assert.ok(applied.applied && applied.applied.ok, `应自动安装成功：${JSON.stringify(applied.applied)}`);
   assert.strictEqual(applied.pendingReload, true, "安装后应标记待重启生效");
-  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(SELF_TARGET, "manifest.json"), "utf8")).version, "0.9.9");
+  assert.strictEqual(JSON.parse(fs.readFileSync(path.join(SELF_TARGET, "manifest.json"), "utf8")).version, NEWER);
   assert.match(fs.readFileSync(path.join(SELF_TARGET, "main.js"), "utf8"), /new main/);
   assert.match(fs.readFileSync(path.join(SELF_TARGET, "renderer", "index.html"), "utf8"), /new panel/);
   ok("自动更新：解包 .piplug 并覆盖安装目录（含子目录），落盘自检通过");
@@ -220,6 +229,33 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   const noAuto = await TOOLS.check_update.execute({ force: true, apply: true });
   assert.ok(!noAuto.applied || noAuto.applied.ok === false, "autoUpdate=false 时不得安装");
   ok("autoUpdate=false 时不做自动安装（仅提示）");
+
+  // ---------- 宿主登记同步：页面上的版本号不能一直停在旧值 ----------
+  console.log("\n[自更新] 同步宿主 registry.json 里的版本号");
+  const layoutRoot = path.join(TMP, "plugins");
+  const layoutDir = path.join(layoutRoot, "installed", "gwb.pi-workflow-gates");
+  fs.mkdirSync(layoutDir, { recursive: true });
+  const regFile = path.join(layoutRoot, "registry.json");
+  fs.writeFileSync(regFile, JSON.stringify({ plugins: [
+    { id: "gwb.pi-workflow-gates", version: "0.9.5", path: layoutDir },
+    { id: "other.plugin", version: "1.2.3" },
+  ] }, null, 2));
+  const syncPkg = path.join(TMP, "sync.piplug");
+  writePkg(syncPkg, { "manifest.json": pkgManifest(NEWER, "gwb.pi-workflow-gates"), "main.js": "ok" });
+  writeLatest({ version: NEWER, tag: "v0.9.9", downloadUrl: `file://${syncPkg}` });
+  // 用 PI_WORKFLOW_SELF_UPDATE_DIR 指向「像 plugins/installed 的目录」，走真实覆盖 + 登记同步
+  process.env.PI_WORKFLOW_SELF_UPDATE_DIR = layoutDir;
+  // applyUpdate 里 SELF_UPDATE_DIR 是模块加载时读的常量，测试里直接调工具走不通，改为验证 syncHostRegistry 的产物：
+  const reg = JSON.parse(fs.readFileSync(regFile, "utf8"));
+  assert.strictEqual(reg.plugins[0].version, "0.9.5", "前置：登记里是旧版本");
+  const { __test } = require(path.join(PKG, "main.js"));
+  const syncRes = __test.syncHostRegistry(layoutDir, NEWER);
+  assert.ok(syncRes.ok, `同步应成功：${JSON.stringify(syncRes)}`);
+  const reg2 = JSON.parse(fs.readFileSync(regFile, "utf8"));
+  assert.strictEqual(reg2.plugins[0].version, NEWER, "本插件版本应刷成 0.9.9");
+  assert.ok(reg2.plugins[0].updatedAt, "应记录 updatedAt");
+  assert.strictEqual(reg2.plugins[1].version, "1.2.3", "不得改动别的插件");
+  ok("宿主登记同步：只改本插件版本号，别的插件不动");
 
   console.log(`\n全部通过：${passed} 项断言组（临时目录 ${TMP}）`);
 })().catch(e => {

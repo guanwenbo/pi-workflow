@@ -1,11 +1,10 @@
 {
-  "version": "0.9.8",
-  "tag": "v0.9.8",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.8/gwb.pi-workflow-gates-0.9.8.piplug",
-  "publishedAt": "2026-11-12T06:22:51.612Z",
+  "version": "0.9.9",
+  "tag": "v0.9.9",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.9/gwb.pi-workflow-gates-0.9.9.piplug",
+  "publishedAt": "2026-11-12T06:30:00.000Z",
   "notes": [
-    "自动更新真正生效：插件自己下载 Release 的 .piplug（ZIP），内置解包器就地覆盖安装目录，重启 App / Reload 后即新版本（宿主未给插件 install/reload API，这是唯一自动路径）",
-    "修正「开了自动更新却不动」的两个原因：检查只在 onLoad 跑一次（现每 4 小时复查）、且旧版只提示不安装",
-    "安装前校验包 id 与版本、拒绝 .. 路径穿越、写后读回 manifest 自检；幂等（同版本不重复覆盖）；可用 autoUpdate=false 关闭"
+    "自更新后同步宿主 registry.json 里的版本号：Plugins 页不再显示旧版本（此前 0.9.8 在跑、页面仍写 0.9.5）",
+    "只改本插件这一条记录，原子写（临时文件 + rename），失败不影响更新本身"
   ]
 }
