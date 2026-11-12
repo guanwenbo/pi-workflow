@@ -1607,6 +1607,16 @@ async function onLoad() {
     updateStatePathCache = nodePath.join(dataPath, "update-check.json");
   } catch { /* 拿不到就只联网检查、不落状态 */ }
   await autoCheckUpdate();
+  // 宿主会用它内存里的旧记录回写 registry.json（实测启动后约 30s 覆盖一次），
+  // 所以延迟几秒再矫正版本号，否则立刻写会被它盖掉。
+  const regSyncTimer = setTimeout(() => {
+    const r = syncHostRegistry(__dirname, currentPluginVersion());
+    if (!r.ok && r.reason && !/找不到/.test(r.reason)) {
+      console.warn("[pi-workflow-gates] 宿主登记版本同步跳过：", r.reason);
+    }
+  }, 6000);
+  if (regSyncTimer.unref) regSyncTimer.unref();
+
   // 长时间不关 App 也要能发现新版：每 4 小时复查一次（内部 24h 节流，不会频繁联网）
   if (!updateTimer) {
     updateTimer = setInterval(() => { autoCheckUpdate().catch(() => {}); }, UPDATE_TIMER_MS);
