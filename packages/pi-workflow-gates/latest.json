@@ -2,7 +2,7 @@
   "version": "0.9.10",
   "tag": "v0.9.10",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.9.10/gwb.pi-workflow-gates-0.9.10.piplug",
-  "publishedAt": "2026-11-12T06:40:00.000Z",
+  "publishedAt": "2026-11-12T06:27:12.088Z",
   "notes": [
     "加载后延迟 6 秒矫正宿主 registry.json 的版本号：宿主会用内存里的旧记录回写该文件，立即写会被覆盖",
     "效果：Plugins 页显示的版本与磁盘实际版本保持一致，不再出现「在跑 0.9.8、页面写 0.9.5」"
