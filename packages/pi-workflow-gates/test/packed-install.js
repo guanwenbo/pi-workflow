@@ -26,7 +26,7 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
 // ---------- 1. 只复制分发内容（等价于 .piplug 解包结果） ----------
 fs.mkdirSync(PLUGIN_DIR, { recursive: true });
-for (const f of ["main.js", "manifest.json", "scaffold.generated.js"]) {
+for (const f of ["main.js", "checks.js", "manifest.json", "scaffold.generated.js"]) {
   fs.copyFileSync(path.join(PKG, f), path.join(PLUGIN_DIR, f));
 }
 fs.cpSync(path.join(PKG, "renderer"), path.join(PLUGIN_DIR, "renderer"), { recursive: true });
@@ -71,8 +71,8 @@ global.pi = {
   console.log("[1] 从分发副本加载插件（模拟 .piplug 安装）");
   const plugin = require(path.join(PLUGIN_DIR, "main.js"));
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 11, "应注册 11 个工具");
-  ok("插件在无仓库环境下正常加载，11 个工具注册完成");
+  assert.strictEqual(Object.keys(TOOLS).length, 17, "应注册 17 个工具");
+  ok("插件在无仓库环境下正常加载，17 个工具注册完成");
 
   // ---------- 2. 斜杠命令来自内嵌脚手架 ----------
   const pdir = path.join(HOME, ".pi", "agent", "prompts");

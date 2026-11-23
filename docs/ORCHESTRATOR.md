@@ -17,6 +17,14 @@
 3. **摘要返回**：子 Agent 只返回 ≤200 字摘要（结论 + 产出文件路径 + 待父 Agent 决策事项），全文落在档案里。
 4. **执行者不扰人**（借鉴 dsh-superagent）：角色 Agent 执行中**不得直接向用户提问**——需要澄清的问题一律写入返回摘要的「待决策事项」，由父 Agent 汇总后统一向用户发问（一次一个具体问题）；只有「需要人决策」或「有可用结果」时才允许打扰用户，过程进展不刷屏。
 
+## 二之三、派发纪律（违反即返工）
+
+1. 父 Agent **只调度，不动手**：实现、设计、评审一律派角色子代理；父 Agent 自己写代码/写设计视为越权
+2. **不得更换用户指定的模型**；角色→模型绑定见 `docs/roles/` 与配置，派发时按绑定执行
+3. 派发**只给现象与材料，不给主观结论**（bug 排查尤其：给日志、给现象，不猜根因）
+4. 每轮子代理返回前，必须把自己这轮的决策追加进 `log/YYYY-MM-DD.md`；父 Agent 校验「有产出无流水」即拒收
+5. 长跑任务每 10 分钟回写一行进度到 log，避免「跑了 40 分钟不知道是否卡住」
+
 ## 三、状态机
 
 ```
@@ -46,6 +54,16 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 | `/change` | 任意 | `change-requested`（变更单产出后须先过**架构师方案评审**，再交用户审批） |
 | `/retro` | `released` | `archived` |
 
+
+**分级门禁**：`state_check` 会按 `00-meta.md` 的 `tier` 裁剪——T0 不走 `/design`、`/review`、`/breakdown`、`/test-plan`；T1 不走 `/design`、`/review`。被拒时按 hint 处理：确需升级走 `/change`，不得绕行。
+
+**新增机械闸（顺序固定）**：
+1. `/design` 产出 → `design_lint`（先 warn，稳定后切 block）→ 有 blocker 不进 `/review`
+2. `/breakdown` 产出 → `trace_matrix`：有 AC 无任务即回到 `/breakdown` 补齐
+3. **`/dev` 之前必须 `analyze`**：lint + 矩阵 + 该级别产出齐全，不 clean 禁止开工（改文档很便宜，改代码很贵）
+4. 每个任务完成 → `verify_record`（命令+退出码），再勾选
+5. **`/cr` 之前必须 `converge`**：补齐遗漏后重跑，clean 才进 `/cr`
+6. 任何评审、打回、决策 → `log_append`，不写进主链路文档
 **门禁执行（插件物理化，gwb.pi-workflow-gates v0.4.0+ 可用时强制）**：插件工具 `plugin_gwb_pi_workflow_gates_*` 存在时——建档必须调 `req_init`；每条命令执行前必须调 `state_check`（ok=false 即停止并提示 hint；返回的 `warnings` 含跨项目依赖告警，须原样转达用户）；任何状态变更必须调 `state_transition`（非法流转会被物理拒绝，并自动镜像到跨项目注册中心）；`metrics` 的 CR 轮次/返工次数/人工打回原因必须调 `metrics_record`；依赖扫描必须调 `layer_scan`；变更编号必须调 `chg_next`。**跨项目依赖**：建立/解除依赖必须调 `registry_dep`（add/remove/list，双写注册中心与档案 frontmatter dependsOn）；跨项目全景必须调 `registry_list`；依赖只告警不阻塞，节奏由用户人工把控。**禁止手工编辑 `00-meta.md` 的 status / metrics / dependsOn**。插件不可用（工具不存在）时才允许按门禁表手工校验，且须在返回中声明「插件缺失，走手工兜底」。
 - **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 

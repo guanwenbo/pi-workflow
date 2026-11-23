@@ -88,8 +88,8 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 11, "应注册 11 个工具");
-  ok("插件加载：11 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 17, "应注册 17 个工具");
+  ok("插件加载：17 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
@@ -244,6 +244,65 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   );
   WS = prevWS;
   ok("未接入仓建档成功：模板取自内嵌脚手架，并提示补接入");
+
+  // ---------- 8. 体量分级 + 新工具 ----------
+  console.log("\n[8] 体量分级 / design_lint / trace_matrix / verify");
+  WS = PARENT;
+  const bug = await call("req_init", { title: "结账金额显示错误", slug: "checkout-amount-bug", tier: "T0" });
+  assert.strictEqual(bug.tier, "T0");
+  assert.match(fs.readFileSync(path.join(PARENT, bug.dir, "00-meta.md"), "utf8"), /^tier: T0$/m);
+  ok("req_init 支持 tier，写入 00-meta frontmatter");
+
+  const noDesign = await call("state_check", { reqId: bug.reqId, command: "design" });
+  assert.strictEqual(noDesign.ok, false);
+  assert.match(noDesign.hint, /T0/);
+  ok("T0 走 /design 被拒：提示该级别不走此命令");
+
+  const direct = await call("state_transition", { reqId: bug.reqId, to: "developing" });
+  assert.strictEqual(direct.ok, true, "T0 允许 draft → developing（跳过设计与拆解）");
+  ok("T0 分级流转：draft → developing 直接放行");
+
+  const badFlow = await call("state_transition", { reqId: bug.reqId, to: "clarifying" });
+  assert.strictEqual(badFlow.ok, false, "T0 不应允许走 clarifying");
+  ok("T0 拒绝走主干状态（clarifying）");
+
+  // 产出缺失拦截：T0 进 archived 需要 SUMMARY.md（已由 req_init 建）
+  const logFile = path.join(PARENT, bug.dir, "log");
+  const today = fs.readdirSync(logFile);
+  assert.ok(today.length >= 1 && /\.md$/.test(today[0]), "状态流转应自动写过程流水");
+  ok(`过程流水自动追加：log/${today[0]}`);
+
+  // design_lint：空设计 + 缺章节 → warn 模式 ok 但报 blocker
+  const lint = await call("design_lint", { reqId: parentId, mode: "warn" });
+  assert.strictEqual(lint.mode, "warn");
+  assert.ok(Array.isArray(lint.findings));
+  ok(`design_lint 返回结构化问题（${lint.findings.length} 条，模式 warn）`);
+
+  // trace_matrix：无 AC 时 gaps 为空但结构完整
+  const matrix = await call("trace_matrix", { reqId: parentId });
+  assert.ok(matrix.gaps && Array.isArray(matrix.gaps.acNoTask));
+  ok("trace_matrix 返回矩阵与缺口结构");
+
+  // verify_record + log_append
+  await call("verify_record", { reqId: parentId, task: "T-01", command: "mvn test", exitCode: 0 });
+  const ev = JSON.parse(fs.readFileSync(path.join(PARENT, "requirements", parentId, "evidence.json"), "utf8"));
+  assert.strictEqual(ev[0].pass, true);
+  ok("verify_record 落 evidence.json（pass=true）");
+
+  await call("log_append", { reqId: parentId, role: "架构师CR", text: "第1轮评审不通过：缺幂等设计" });
+  const logs = fs.readdirSync(path.join(PARENT, "requirements", parentId, "log"));
+  const body = fs.readFileSync(path.join(PARENT, "requirements", parentId, "log", logs[0]), "utf8");
+  assert.match(body, /架构师CR/);
+  ok("log_append 写入过程流水（含角色）");
+
+  // analyze / converge 可执行且返回缺口
+  const an = await call("analyze", { reqId: parentId, mode: "warn" });
+  assert.ok(typeof an.clean === "boolean" && an.gaps);
+  ok(`analyze 返回缺口报告（clean=${an.clean}）`);
+
+  const cv = await call("converge", { reqId: parentId, append: false });
+  assert.ok(typeof cv.clean === "boolean");
+  ok(`converge 可只读运行（clean=${cv.clean}）`);
 
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {

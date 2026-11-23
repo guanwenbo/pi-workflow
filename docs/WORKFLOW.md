@@ -24,6 +24,20 @@ blocked：任意阶段可挂起（须记录原因）
 change-requested：变更流程，审批通过后回流到对应阶段
 ```
 
+## 三之二、体量分级（决定产出与门禁）
+
+`/req-new` 时定级，写入 `00-meta.md` 的 `tier`。级别决定「必须产出什么、能走哪些状态、几道人工闸」；**越级/降级只走 `/change`**。
+
+| 级别 | 场景 | 必须产出 | 人工闸 | 状态路径 |
+|---|---|---|---|---|
+| T0 Bug修复 | 行为纠错，不新增能力 | 00-meta、01-intake（含根因+回归用例）、证据、SUMMARY | 1（修复方案+回归确认） | draft→developing→cr-agent→cr-human→cr-confirmed→archived |
+| T1 小型需求 | 单仓、无新表/新对外接口、≲500 行 | + 02-clarification（AC 带名）、05-tasks、证据 | 1（AC 确认） | draft→clarifying→clarified→developing→cr*→testing→archived |
+| T2 中型需求 | 单仓、有新接口/新表/跨模块 | 现有全量（含 03-design、08-test-plan、04-review、09-release、11-retro） | 2（方案复审、CR 复验） | 主干 15 态 |
+| T3 大型需求 | 跨项目、跨域、需派生 | T2 全部 + derive 简报 + 依赖登记 | 2 + 派生审批 | 主干 15 态 |
+| T4 新项目 | 新工程/新应用 | T3 + 工程宪法 + 活 specs 初始化，再拆成多个 T2/T3 子需求 | 2 + 立项审批 | 主干 15 态 |
+
+门禁由插件按 `tier` 物理裁剪：级别不走该状态时 `state_transition` 直接拒绝；进入关键状态前校验该级别要求的产出文件是否存在。
+
 ## 四、命令速查表
 
 > **斜杠命令怎么进 `/` 菜单**：宿主只扫描两处提示模板——`<工作区>/.pi/prompts/*.md` 与 `~/.pi/agent/prompts/*.md`，且没有插件贡献点（`commands.register` 只登记可执行命令，不能注入 prompt）。
@@ -48,6 +62,17 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | `/change <描述>` | 变更管理（任意阶段） | 风险官 | changes/CHANGES.md |
 | `/retro` | 归档复盘 | 复盘主持 | 11-retro.md + 流程优化提案 |
 
+**机械检查（插件工具，不调模型）**
+
+| 工具 | 时机 | 作用 |
+|---|---|---|
+| `design_lint` | /design 完成后、/review 前 | 七部分/术语表/调用链路八列/复用论证/编号带名/主链路禁过程/精简/日志，先 warn 后 block |
+| `trace_matrix` | /breakdown 后、/cr 前 | AC → 任务 → 用例 → 证据 覆盖与缺口 |
+| `verify_record` | 每个任务完成时 | 落 evidence.json；「完成」以证据为准 |
+| `log_append` | 任意 | 过程流水 `log/YYYY-MM-DD.md`（只追加） |
+| `analyze` | /dev 之前 | 一致性闸：lint + 矩阵 + 产出齐全，只读 |
+| `converge` | /cr 之前 | 收敛闸：补遗漏项到 05-tasks |
+
 ## 五、标准流程
 
 ```
@@ -71,6 +96,11 @@ change-requested：变更流程，审批通过后回流到对应阶段
 6. 架构红线：见 [ARCHITECTURE.md](./ARCHITECTURE.md)，三条硬规则违反即 blocker
 7. 方案一致性：每次开发完成后先过「方案一致性比对」（/cr 第零阶段）
 8. 跨项目依赖：需求跨项目时用 `registry_dep` 声明 dependsOn（只告警不阻塞）；注册中心镜像在 `requirements/.registry.json`（运行时文件，不入 git）——与设计冲突由架构师裁定改代码或改设计，确保代码与设计 1:1 还原；设计文档只保留最终态，不留过程结论
+9. **主链路只留最终态**：00/01/02/03/05/08/09 只写结论；评审意见、被否方案、打回原因一律进 `log/YYYY-MM-DD.md`
+10. **完成以证据为准**：勾选任务前必须 `verify_record`；`converge` 对「勾选但无证据」直接报缺口
+11. **文档精简**：先结论后细节；一段 ≤3 句、一组列表 ≤7 项、不写套话；能用表格不用散文
+12. **代码精简**：先复用后新写；删优于加；不加没人要的抽象；非平凡逻辑必须带一个小测试
+13. **日志刚需**：关键路径带业务标识与 traceId、异常带栈、敏感脱敏；禁循环体逐条日志与大对象打印
 
 ## 七、文件地图
 
@@ -91,5 +121,5 @@ packages/
 assets/                要复制进被评审项目根的资产（复制后成为项目的 rules/ 与 scripts/review/）
   rules/                 severity.json 严重度映射、semgrep/ 自有红线
   scripts/review/        run-l1.sh：diff 落盘 + 11 个工具 + status.json
-requirements/          需求档案存放区
+requirements/          需求档案存放区（每个需求含 log/ 过程流水）
 ```

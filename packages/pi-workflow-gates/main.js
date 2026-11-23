@@ -56,6 +56,82 @@ const FLOW = {
 
 const SIDE_STATES = ["blocked", "change-requested"]; // 任意状态 → 这两个状态恒允许（note 必填）
 
+// ---------- 体量分级（T0-T4）----------
+// 为什么分级：15 态全量跑一个小 bug 是纯浪费。级别决定「必须产出什么、能走哪些状态、几道人工闸」。
+// 升降级只走 /change，不允许静默越级——越级会绕过该级别应有的产出。
+const TIERS = {
+  T0: {
+    label: "Bug修复",
+    // 只允许的流转（覆盖全局 FLOW）：修复 → CR → 归档，不做设计/测试规划
+    flow: {
+      draft: ["developing"], developing: ["cr-agent", "developing"],
+      "cr-agent": ["cr-human", "developing"], "cr-human": ["cr-confirmed", "developing"],
+      "cr-confirmed": ["archived"], archived: [],
+    },
+    commands: ["cr", "risk", "change"],
+    // 进入该状态前必须存在的产出文件
+    require: { "cr-agent": ["01-intake.md"], archived: ["01-intake.md", "SUMMARY.md"] },
+  },
+  T1: {
+    label: "小型需求",
+    flow: {
+      draft: ["clarifying"], clarifying: ["clarified"], clarified: ["developing"],
+      developing: ["cr-agent", "developing"], "cr-agent": ["cr-human", "developing"],
+      "cr-human": ["cr-confirmed", "developing"], "cr-confirmed": ["testing"],
+      testing: ["archived"], archived: [],
+    },
+    commands: ["dev", "cr", "test-plan", "retro", "risk", "change", "req-clarify"],
+    require: { clarified: ["02-clarification.md"], "cr-agent": ["02-clarification.md", "05-tasks.md"], archived: ["SUMMARY.md"] },
+  },
+  T2: { label: "中型需求", flow: null, commands: ["*"], require: {
+    reviewed: ["03-design.md", "08-test-plan.md"], planned: ["05-tasks.md"], archived: ["SUMMARY.md", "11-retro.md"] } },
+  T3: { label: "大型需求", flow: null, commands: ["*"], require: {
+    reviewed: ["03-design.md", "08-test-plan.md"], confirmed: ["04-review.md"],
+    planned: ["05-tasks.md"], archived: ["SUMMARY.md", "11-retro.md"] } },
+  T4: { label: "新项目", flow: null, commands: ["*"], require: {
+    clarified: ["00-meta.md"], reviewed: ["03-design.md"], archived: ["SUMMARY.md"] } },
+};
+const TIER_IDS = Object.keys(TIERS);
+const DEFAULT_TIER = "T2";
+
+function normalizeTier(t) {
+  const v = String(t || "").toUpperCase().replace(/^T?/, "T");
+  if (!TIER_IDS.includes(v)) throw new Error(`非法体量级别：${t}（可选：${TIER_IDS.join(" / ")}）`);
+  return v;
+}
+
+function fmField(content, key) {
+  const m = String(content || "").match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return "";
+  const line = m[1].split("\n").find(l => new RegExp(`^${key}\\s*:`).test(l.trim()));
+  return line ? line.split(":").slice(1).join(":").trim() : "";
+}
+
+function tierOf(content) {
+  const t = fmField(content, "tier");
+  return TIER_IDS.includes(t) ? t : DEFAULT_TIER;
+}
+
+/** frontmatter 写入：有则替换，无则补一行（老档案没有 tier 字段） */
+function putFrontmatter(content, key, value) {
+  const re = new RegExp(`^(---\\n[\\s\\S]*?^${key}\\s*:\\s*).*$`, "m");
+  if (re.test(content)) return content.replace(re, `$1${value}`);
+  return content.replace(/^---\n/, `---\n${key}: ${value}\n`);
+}
+
+/** 过程流水：requirements/<REQ>/log/YYYY-MM-DD.md，只追加。
+ *  为什么单独一条流：主链路文档只留最终结论，追溯「谁在第几轮因为什么被否」靠这里。 */
+async function appendLog(reqId, role, text) {
+  const path = `requirements/${reqId}/log/${today()}.md`;
+  let prev;
+  try { prev = await pi.fs.readText(path); } catch {
+    prev = `# 过程流水 ${reqId}\n\n> 只追加不改写。主链路文档不写过程，追溯查这里。\n`;
+  }
+  const entry = `\n## ${nowMinute().slice(11)} [${role}] ${text}\n`;
+  try { await pi.fs.writeText(path, prev + entry); } catch { /* 日志失败不影响主流程 */ }
+  return path;
+}
+
 // ---------- 工具函数 ----------
 
 function pad(n) { return String(n).padStart(2, "0"); }
@@ -155,6 +231,7 @@ const nodePath = require("node:path");
 const nodeOs = require("node:os");
 const nodeZlib = require("node:zlib");
 const nodeHttps = require("node:https");
+const checks = require("./checks.js"); // 文档级机械检查（design_lint / trace_matrix 等）
 
 async function registryFile() {
   const dataPath = await pi.plugin.getDataPath();
@@ -678,6 +755,8 @@ async function reqInit(args) {
   const dir = `requirements/${reqId}`;
   if (await exists(dir)) throw new Error(`需求档案已存在：${dir}`);
 
+  const tier = normalizeTier(args.tier || DEFAULT_TIER);
+
   // 模板来源：先看当前工作区有没有工作流资产（已接入的仓），没有就回退到插件内嵌脚手架。
   // 为什么要回退：req_init 明确允许在「尚未接入」的仓里直接建档（Java 工程常见），
   // 那时工作区没有 docs/templates，只认文件系统会直接建档失败，用户被迫先跑 adopt。
@@ -712,7 +791,7 @@ async function reqInit(args) {
     .replaceAll("<负责人>", args.owner || "待填写")
     .replaceAll("YYYY-MM-DD", d);
 
-  await pi.fs.writeText(`${dir}/00-meta.md`, meta);
+  await pi.fs.writeText(`${dir}/00-meta.md`, putFrontmatter(meta, "tier", tier));
   await pi.fs.writeText(`${dir}/01-intake.md`, intakeTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
   await pi.fs.writeText(`${dir}/SUMMARY.md`, summaryTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
 
@@ -727,6 +806,8 @@ async function reqInit(args) {
     dir,
     status: "draft",
     files: ["00-meta.md", "01-intake.md", "SUMMARY.md"],
+    tier,
+    tierLabel: TIERS[tier].label,
     templateSource: tplDir || "embedded",
     adopted: onboarded,
     warnings: onboarded
@@ -741,12 +822,25 @@ async function stateCheck(args) {
   if (!reqId || !command) throw new Error("缺少必填参数：reqId / command");
   const gate = GATES[command];
   if (!gate) throw new Error(`未知命令：${command}（可选：${Object.keys(GATES).join(" / ")}）`);
-  const status = parseStatus(await readMeta(reqId));
+  const content = await readMeta(reqId);
+  const status = parseStatus(content);
+  const tier = tierOf(content);
   const warnings = await depWarnings(reqId);
+
+  // 体量分级裁剪：小 bug 不走 /design、/review、/breakdown
+  const cmds = TIERS[tier].commands;
+  if (!cmds.includes("*") && !cmds.includes(command)) {
+    return {
+      ok: false, reqId, command, status, tier,
+      expected: cmds, warnings,
+      hint: `该需求判定为 ${tier}（${TIERS[tier].label}），不走 /${command}。可用命令：${cmds.join(" / ")}；确需升级请走 /change`,
+    };
+  }
+
   const ok = gate.expect.includes("*") || gate.expect.includes(status);
   return ok
-    ? { ok: true, reqId, command, status, warnings }
-    : { ok: false, reqId, command, status, expected: gate.expect, hint: gate.hint, warnings };
+    ? { ok: true, reqId, command, status, tier, warnings }
+    : { ok: false, reqId, command, status, tier, expected: gate.expect, hint: gate.hint, warnings };
 }
 
 async function stateTransition(args) {
@@ -757,15 +851,30 @@ async function stateTransition(args) {
 
   let content = await readMeta(reqId);
   const from = parseStatus(content);
+  const tier = tierOf(content);
+  // 级别自带流转表时以它为准（T0/T1 的合法路径比主干短）
+  const flow = TIERS[tier].flow || FLOW;
+  const allowedTo = [...(flow[from] || []), ...SIDE_STATES];
 
   const allowed = SIDE_STATES.includes(to)
     ? true
-    : (FLOW[from] || []).includes("*") || (FLOW[from] || []).includes(to);
+    : (flow[from] || []).includes("*") || (flow[from] || []).includes(to);
   if (!allowed) {
     return {
-      ok: false, reqId, from, to,
-      allowed: [...(FLOW[from] || []), ...SIDE_STATES],
-      hint: `非法流转：${from} → ${to}。允许的目标：${[...(FLOW[from] || []), ...SIDE_STATES].join(" / ")}`,
+      ok: false, reqId, from, to, tier,
+      allowed: allowedTo,
+      hint: `非法流转：${from} → ${to}（${tier} ${TIERS[tier].label}）。允许的目标：${allowedTo.join(" / ")}`,
+    };
+  }
+
+  // 进入关键状态前校验该级别要求的产出是否齐全
+  const need = (TIERS[tier].require || {})[to] || [];
+  const missing = [];
+  for (const f of need) if (!(await exists(`requirements/${reqId}/${f}`))) missing.push(f);
+  if (missing.length) {
+    return {
+      ok: false, reqId, from, to, tier, missing,
+      hint: `进入 ${to} 前缺少产出：${missing.join("、")}（${tier} ${TIERS[tier].label} 要求）。补齐后再流转`,
     };
   }
 
@@ -774,7 +883,8 @@ async function stateTransition(args) {
   content = appendStatusLog(content, from, to, note);
   await pi.fs.writeText(metaPath(reqId), content);
   await registryMirrorStatus(reqId, to); // 镜像到注册中心（跨项目视图）
-  return { ok: true, reqId, from, to, updated: today() };
+  await appendLog(reqId, "父Agent", `${from} → ${to}${note ? `｜${note}` : ""}`);
+  return { ok: true, reqId, from, to, tier, updated: today() };
 }
 
 // ---------- layer_scan：分层与域间依赖物理扫描（Java） ----------
@@ -915,7 +1025,7 @@ async function chgNext(args) {
   return { ok: true, reqId, next: `CHG-${String(max + 1).padStart(2, "0")}`, maxExisting: max ? `CHG-${String(max).padStart(2, "0")}` : null };
 }
 async function metricsRecord(args) {
-  const { reqId, kind, note } = args || {};
+  const { reqId, kind, note, reason } = args || {};
   if (!reqId || !kind) throw new Error("缺少必填参数：reqId / kind");
   if (kind === "human_reject" && !note) throw new Error("human_reject 必须在 note 中写明打回原因");
 
@@ -932,7 +1042,8 @@ async function metricsRecord(args) {
     result = { metric: "返工次数", value: n + 1, audit: `${n + 1} = ${n} + 1` };
   } else if (kind === "human_reject") {
     const { n } = parseMetricRow(content, "返工次数"); // 人工打回同时计返工（EP-07）
-    content = setMetricRow(content, "人工打回原因", note, today());
+    // 打回原因带分类（reason），复盘时能统计 TOP 原因，而不是只看自由文本
+    content = setMetricRow(content, "人工打回原因", reason ? `[${reason}] ${note}` : note, today());
     content = setMetricRow(content, "返工次数", n + 1, `${n + 1} = ${n} + 1（人工打回）`);
     result = { metric: "人工打回原因", value: note, rework: n + 1 };
   } else {
@@ -940,6 +1051,7 @@ async function metricsRecord(args) {
   }
 
   await pi.fs.writeText(metaPath(reqId), content);
+  await appendLog(reqId, "父Agent", `metrics ${kind}${reason ? `（${reason}）` : ""}${note ? `：${note}` : ""}`);
   return { ok: true, reqId, ...result };
 }
 
@@ -1564,6 +1676,165 @@ const TOOLS = [
       },
     },
     execute: checkUpdate,
+  },
+  {
+    name: "design_lint",
+    description: "设计文档机械检查（不调用模型）：七部分结构、术语表与自造词、调用链路表八列、复用论证（反过度设计）、编号必须带人话名称、主链路禁过程内容、精简（段落3句/列表7项/行数）、日志与 traceId 说明。mode 默认 warn 只告警，block 时 blocker 级即 ok=false。评审前必须调用。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        mode: { type: "string", description: "off / warn（默认）/ block" },
+      },
+      required: ["reqId"],
+    },
+    execute: async args => {
+      const { reqId, mode } = args || {};
+      if (!reqId) throw new Error("缺少必填参数：reqId");
+      let setting = "warn";
+      try { setting = (await pi.plugin.getSettings())?.designLint || "warn"; } catch { /* 无设置按 warn */ }
+      const res = await checks.designLint(reqId, { mode: mode || setting });
+      return { ...res, count: res.findings.length };
+    },
+  },
+  {
+    name: "trace_matrix",
+    description: "AC 追溯矩阵（纯机械）：解析 02-clarification 的 AC、05-tasks 的覆盖与 verify、08-test-plan 的用例关联、evidence.json 的执行证据，输出每条 AC 的任务/用例/证据覆盖与缺口（acNoTask/acNoCase/acNoEvidence/taskNoVerify/taskNoEvidence）。/breakdown 之后、/cr 之前必须调用。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: { reqId: { type: "string", description: "需求编号" } },
+      required: ["reqId"],
+    },
+    execute: async args => {
+      const { reqId } = args || {};
+      if (!reqId) throw new Error("缺少必填参数：reqId");
+      return checks.traceMatrix(reqId);
+    },
+  },
+  {
+    name: "verify_record",
+    description: "记录验收证据：把一条任务的验证结果（命令、退出码、输出摘要）追加进 requirements/<reqId>/evidence.json。「完成」以证据为准，不以勾选为准；cr_gate 与 converge 依赖它。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        task: { type: "string", description: "任务编号，如 T-01" },
+        command: { type: "string", description: "实际执行的验证命令" },
+        exitCode: { type: "number", description: "退出码，0 视为通过；缺省按通过" },
+        output: { type: "string", description: "输出摘要（几行即可，不要贴全文）" },
+      },
+      required: ["reqId", "task", "command"],
+    },
+    execute: async args => {
+      const { reqId, task, command, exitCode = 0, output = "" } = args || {};
+      if (!reqId || !task || !command) throw new Error("缺少必填参数：reqId / task / command");
+      const file = `requirements/${reqId}/evidence.json`;
+      let list = [];
+      try { const raw = await pi.fs.readText(file); const d = JSON.parse(raw); list = Array.isArray(d) ? d : (d.entries || []); } catch { list = []; }
+      const entry = {
+        task, command, exitCode: Number(exitCode), pass: Number(exitCode) === 0,
+        output: String(output).split("\n").slice(0, 5).join("\n"), at: nowMinute(), by: "agent",
+      };
+      list.push(entry);
+      await pi.fs.writeText(file, JSON.stringify(list, null, 2));
+      await appendLog(reqId, "开发", `${task} verify: ${command} → ${entry.pass ? "通过" : `失败(${exitCode})`}`);
+      return { ok: true, reqId, task, pass: entry.pass, total: list.length, file };
+    },
+  },
+  {
+    name: "log_append",
+    description: "向过程流水追加一条记录：requirements/<reqId>/log/YYYY-MM-DD.md（只追加）。主链路文档只写最终结论，评审意见、被否方案、打回原因一律记这里，供后续 agent 追溯。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        role: { type: "string", description: "记录者角色，如 架构师CR / 开发 / 用户" },
+        text: { type: "string", description: "一句话结论（≤2 行）" },
+      },
+      required: ["reqId", "role", "text"],
+    },
+    execute: async args => {
+      const { reqId, role, text } = args || {};
+      if (!reqId || !role || !text) throw new Error("缺少必填参数：reqId / role / text");
+      await readMeta(reqId); // 档案不存在时直接报错，避免写散落目录
+      const file = await appendLog(reqId, role, text);
+      return { ok: true, reqId, file };
+    },
+  },
+  {
+    name: "analyze",
+    description: "一致性闸（实现前，只读）：design_lint 全部判据 + AC 追溯矩阵 + 该体量级别要求的产出是否齐全，一次返回缺口清单。必须在 /dev 之前调用；有问题回到归属步骤修（缺 AC 回 /req-clarify、缺设计回 /design、缺任务回 /breakdown），修完重跑到干净。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        mode: { type: "string", description: "design_lint 模式 off/warn/block，缺省取插件设置" },
+      },
+      required: ["reqId"],
+    },
+    execute: async args => {
+      const { reqId, mode } = args || {};
+      if (!reqId) throw new Error("缺少必填参数：reqId");
+      const content = await readMeta(reqId);
+      const tier = tierOf(content);
+      let setting = "warn";
+      try { setting = (await pi.plugin.getSettings())?.designLint || "warn"; } catch { /* 默认 warn */ }
+      const lint = await checks.designLint(reqId, { mode: mode || setting });
+      const matrix = await checks.traceMatrix(reqId);
+      const need = (TIERS[tier].require || {}).confirmed || [];
+      const missing = [];
+      for (const f of need) if (!(await exists(`requirements/${reqId}/${f}`))) missing.push(f);
+      const gaps = {
+        lint: lint.findings.filter(f => f.level === "blocker" || f.level === "major").map(f => `${f.code}: ${f.message}`),
+        matrix: Object.entries(matrix.gaps).filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join(",")}`),
+        artifacts: missing,
+      };
+      const clean = !gaps.lint.length && !matrix.gaps.acNoTask.length && !missing.length;
+      return { ok: clean, reqId, tier, clean, gaps, lintCounts: lint.counts, matrix, next: clean ? "可以进入 /dev" : "按上面缺口回到归属步骤修，修完重跑 analyze" };
+    },
+  },
+  {
+    name: "converge",
+    description: "收敛闸（实现后，只读+只追加任务）：对照 05-tasks 与 evidence.json，找出「已勾选但无证据」「有 AC 无任务」等缺口，把遗漏项追加到 05-tasks 的「收敛补充」段。不改已有内容、不改状态。在 /cr 之前调用，循环到 clean。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        append: { type: "boolean", description: "是否把缺口追加进 05-tasks（默认 true）" },
+      },
+      required: ["reqId"],
+    },
+    execute: async args => {
+      const { reqId, append = true } = args || {};
+      if (!reqId) throw new Error("缺少必填参数：reqId");
+      const matrix = await checks.traceMatrix(reqId);
+      const items = [];
+      for (const ac of matrix.gaps.acNoTask) items.push(`补 ${ac} 的实现任务（当前无用例承接）`);
+      for (const t of matrix.gaps.taskNoEvidence) items.push(`补 ${t} 的验收证据（已勾选但无 verify 记录）`);
+      for (const t of matrix.gaps.taskNoVerify) items.push(`补 ${t} 的 verify 命令（任务须可验证）`);
+      const clean = !items.length;
+      let file = null;
+      if (!clean && append) {
+        file = `requirements/${reqId}/05-tasks.md`;
+        let doc;
+        try { doc = await pi.fs.readText(file); } catch { throw new Error(`缺少 ${file}，先执行 /breakdown`); }
+        const block = ['\n## 收敛补充', '', ...items.map((x, i) => `- [ ] ${x}`), ''].join("\n");
+        if (doc.includes("## 收敛补充")) {
+          doc = doc.replace(/## 收敛补充[\s\S]*?(?=\n## |\s*$)/, m => m.replace(/\s*$/, "") + "\n" + items.map((x, i) => `- [ ] ${x}`).join("\n") + "\n");
+        } else {
+          doc = doc.replace(/\s*$/, "\n") + block;
+        }
+        await pi.fs.writeText(file, doc);
+        await appendLog(reqId, "父Agent", `converge 追加 ${items.length} 项到 05-tasks`);
+      }
+      return { ok: clean, reqId, clean, appended: clean ? 0 : items.length, items, file, next: clean ? "可以进入 /cr" : "实现补齐项后重跑 converge" };
+    },
   },
 ];
 

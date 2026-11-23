@@ -2,6 +2,7 @@
 id: REQ-YYYYMMDD-<slug>
 title: <需求标题>
 status: draft
+tier: T2          # T0 Bug修复 / T1 小型 / T2 中型 / T3 大型 / T4 新项目；决定必须产出哪些文档
 dependsOn: []
 priority: <P0|P1|P2|P3>
 owner: <负责人>
