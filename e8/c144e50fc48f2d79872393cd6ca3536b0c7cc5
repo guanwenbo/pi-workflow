@@ -1,0 +1,42 @@
+docs/ARCHITECTURE.md
+  h_b98c004121ae66 91-112
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 20-27,57-66
+docs/WORKFLOW.md
+  h_b98c004121ae66 27-40,65-75,99-103,124
+docs/roles/cr-architect.md
+  h_b98c004121ae66 35-45
+docs/roles/developer.md
+  h_b98c004121ae66 6-13
+docs/templates/00-meta.md
+  h_b98c004121ae66 5
+docs/templates/02-clarification.md
+  h_b98c004121ae66 29,31,37
+docs/templates/03-design.md
+  h_b98c004121ae66 11-18,28-35,223-230,243
+docs/templates/05-tasks.md
+  h_b98c004121ae66 7-12,14-16
+packages/pi-workflow-gates/checks.js
+  h_b98c004121ae66 1-296
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-13
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 59-134,234,758-759,794,809-810,825-827,829-839,842-843,854-857,861,864-877,886-887,1028,1045-1046,1054,1680-1838
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6,8
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 29,74-75
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 91-92,248-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e8c144e50fc48f2d79872393cd6ca3536b0c7cc5",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
