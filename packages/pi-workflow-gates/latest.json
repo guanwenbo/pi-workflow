@@ -2,7 +2,7 @@
   "version": "0.12.1",
   "tag": "v0.12.1",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.12.1/gwb.pi-workflow-gates-0.12.1.piplug",
-  "publishedAt": "2026-11-24T03:40:00.000Z",
+  "publishedAt": "2026-11-23T09:28:47.215Z",
   "notes": [
     "补齐遗漏：req-derive 接入 answer_return（问答自动回流），retro 接入 rework_top（打回原因统计）"
   ]
