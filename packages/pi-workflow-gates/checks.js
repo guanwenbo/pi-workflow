@@ -115,7 +115,8 @@ async function designLint(reqId, opts = {}) {
   if (mode === "off") return { ok: true, mode, skipped: true, findings: [] };
 
   const findings = [];
-  const add = (level, code, message, file = DOC.design) => findings.push({ level, code, file, message });
+  const add = (level, code, message, file = DOC.design, judge) =>
+    findings.push({ level, code, file, message, ...(judge ? { judge } : {}) });
 
   // 1) 主链路禁止过程内容
   for (const name of Object.values(DOC)) {
@@ -145,7 +146,13 @@ async function designLint(reqId, opts = {}) {
     if (!COMMON_TERMS.has(w) && !defined.has(w)) cands.add(w);
   }
   if (!termText) add("major", "terms-missing", "缺少「术语表」：设计中的自造词必须在此给一句话解释，或改用 PRD 原词");
-  else for (const w of [...cands].slice(0, 8)) add("major", "term-undefined", `「${w}」未在术语表登记（要么加解释，要么改用 PRD 原词）`);
+  else for (const w of [...cands].slice(0, 8)) {
+    add("major", "term-undefined", `「${w}」未在术语表登记（要么加解释，要么改用 PRD 原词）`, DOC.design, {
+      type: "bool",
+      instructions: `判断「${w}」是行业/团队通用叫法，还是本文档自造的新词。自造词=读者需要额外解释才能懂。`,
+      criteria: { true: "通用术语，读者不需要解释", false: "自造词，读者需要解释才能懂" },
+    });
+  }
 
   // 4) 调用链路完备性
   const link = table(design, ["上下游", "协议"]);
@@ -198,7 +205,11 @@ async function designLint(reqId, opts = {}) {
   for (const p of paragraphs) {
     const sentences = (p.match(/[。！？!?]/g) || []).length;
     if (sentences > LIMITS.paragraphSentences) {
-      add("major", "verbose-paragraph", `一段 ${sentences} 句（上限 ${LIMITS.paragraphSentences}）：拆开或改成列表`);
+      add("major", "verbose-paragraph", `一段 ${sentences} 句（上限 ${LIMITS.paragraphSentences}）：拆开或改成列表`, DOC.design, {
+        type: "bool",
+        instructions: "判断这段是否含可删的铺垫/重复表述（不是句子多就一定要拆）。",
+        criteria: { true: "确有冗余，可删可拆", false: "每句都承载信息，保留" },
+      });
       break;
     }
   }
@@ -225,6 +236,8 @@ async function designLint(reqId, opts = {}) {
       major: findings.filter(f => f.level === "major").length,
       minor: findings.filter(f => f.level === "minor").length,
     },
+    // 语义类判据交给 Jev（可选）：没配 Jev 就按上面的机械结论处理
+    needsJudge: findings.filter(f => f.judge).map(f => ({ code: f.code, message: f.message, ...f.judge })),
     gate: mode === "warn" ? (bad.length ? `告警模式：${bad.length} 项待修，暂不拦截` : "无待修项") : undefined,
   };
 }

@@ -25,6 +25,7 @@
 4. 每轮子代理返回前，必须把自己这轮的决策追加进 `log/YYYY-MM-DD.md`；父 Agent 校验「有产出无流水」即拒收
 5. 每次派发必须调 `dispatch_record`（role + task + model + 只读文件清单）：模型与 `docs/role-bindings.json` 不一致会被拒，从机制上挡住「擅自换模型」
 6. 长跑任务每 10 分钟调 `dispatch_record(kind=progress)` 回写一行进度，避免「跑了 40 分钟不知道是否卡住」
+7. **可选能力探测**：工具列表有 `JevClassify` 时，判级/争议定级/模糊判据交它复核；没有就按规则走，并在 `log/` 记「Jev 未配置」。能力缺失不是失败，不得阻塞流程。
 7. 跨项目问答：目标仓答复后调 `answer_return`，自动写回父仓 `derive/<子REQ>-answers.md` 并回填 01-intake，不靠人转发
 
 ## 三、状态机

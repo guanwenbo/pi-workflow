@@ -6,6 +6,10 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
 > **EP-05 门禁**：任何改动（含 CR 修复、minor 加固、父 Agent 直接小修）都必须过架构师CR 后才算完成；增量改动走**聚焦增量 CR**（评审范围限定为该增量 commit），流程与本命令相同。
 # /cr
 
+## 可选：Jev 复核争议定级
+
+对评审员与实现方有争议的问题，用 `JevClassify` 做 blocker/major/minor 的 choice 复核；结论写进 `log/`，仍以人工 CR 复验为最终门禁。无 Jev 则按评审员判断。
+
 ## 机械门禁
 
 1. **进 CR 前 `converge {reqId}` 必须 clean=true**；不干净就补齐后重跑（它会追加任务到 05-tasks）

@@ -90,6 +90,20 @@ change-requested：变更流程，审批通过后回流到对应阶段
 
 **小需求裁剪**：简单需求可跳过 `/review`、`/breakdown`，由父 Agent 在 `/req-clarify` 完成后提示用户选择「轻量路径」（clarified → planned → developing），跳过标记记入 `00-meta.md` 备注。
 
+## 五之二、可选能力：Jev 判定
+
+语义判断（机器判不出准头）交给 Jev（`JevClassify`）。**没配置就按插件规则走，不阻塞。**
+
+| 用在 | 判什么 | 无 Jev 时 |
+|---|---|---|
+| `/req-new` | 体量级别 T0-T4（choice） | 按判级表人工定，判不准取 T2 |
+| `/design`、`/review` | `design_lint` 的 `needsJudge` 项：自造词是否真自造、段落是否真冗余（bool） | 按 lint 结论处理（warn 不拦） |
+| `/cr` | 争议问题的级别（blocker/major/minor） | 按评审员判断 |
+| `/retro` | 打回原因归类（自造词/太粗/臃肿/过度设计/编号不清/漏图/其他） | `metrics_record` 的 reason 手填 |
+
+探测：工具列表里有 `JevClassify` 就用；没有就在 `log/` 记一行「Jev 未配置，按规则处理」。
+**边界**：Jev 只做判定，不产出内容；结论必须落档案或 log，且不改变门禁的机械判据。
+
 ## 六、关键规则
 
 1. 阶段门禁：不满足前置状态时提示「请先执行 /xxx」，不静默跳过

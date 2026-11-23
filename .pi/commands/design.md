@@ -6,6 +6,10 @@ description: 方案设计：派发架构设计师产出 DDD 设计稿，并同�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 可选：Jev 复核判据
+
+`design_lint` 返回的 `needsJudge` 逐条交 `JevClassify`（bool）复核：判为「其实没问题」的可豁免并记 `log/`；判为「确有问题」的按原级别修。没有 `JevClassify` 就直接按 lint 结论处理。
+
 ## 机械门禁（先调工具再继续）
 
 1. `state_check {reqId, command:"design"}`：ok=false 立即停止，按 hint 提示用户

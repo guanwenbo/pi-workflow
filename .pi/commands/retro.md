@@ -6,6 +6,10 @@ description: 归档复盘：产出复盘报告与流程改进提案，归档需�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 可选：Jev 归类打回原因
+
+有 `JevClassify` 时把「人工打回原因」原文归类到固定枚举（自造词/太粗/臃肿/过度设计/编号不清/漏图/其他），再喂 `metrics_record`；没有就手填 reason。
+
 ## 机械门禁
 
 1. 若存在 `spec-delta.md`：先 `spec_merge {reqId, capability, dryRun:true}` 给用户看合并结果，确认后正式合并
