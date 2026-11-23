@@ -1,0 +1,22 @@
+packages/pi-workflow-gates/checks.js
+  h_b98c004121ae66 237-238,240-250,255
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-8
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+packages/pi-workflow-gates/test/lint.js
+  h_b98c004121ae66 1-100
+scripts/release.sh
+  h_b98c004121ae66 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "77201071cd7b8f6fbdaf4ea8c7c835ff963606f1",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
