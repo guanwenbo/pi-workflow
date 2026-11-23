@@ -2,7 +2,7 @@
   "version": "0.10.1",
   "tag": "v0.10.1",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.10.1/gwb.pi-workflow-gates-0.10.1.piplug",
-  "publishedAt": "2026-11-23T10:40:00.000Z",
+  "publishedAt": "2026-11-23T07:44:00.791Z",
   "notes": [
     "修复 trace_matrix 解析：任务编号只取 T-NN（不再把任务名当 ID）；AC 名称写在标题下一行也能读到",
     "新增 test/lint.js 回归测试（坏文档 fixture 覆盖六类判据），并纳入发版前必跑"
