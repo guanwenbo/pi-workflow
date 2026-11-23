@@ -1,0 +1,32 @@
+.pi/commands/explore.md
+  h_b98c004121ae66 1-25
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 26-28,70,72,94
+docs/WORKFLOW.md
+  h_b98c004121ae66 49-50,74-76,107-110,131-133
+docs/role-bindings.json
+  h_b98c004121ae66 1-10
+docs/templates/spec-delta.md
+  h_b98c004121ae66 1-25
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-11
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 1058-1197,1979-2033
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 74-75,80-83
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 91-92,99-102,310-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "03ae20582bf9b162b15ae044b251384517a117ec",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
