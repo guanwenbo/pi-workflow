@@ -10,6 +10,12 @@ description: 本仓发起跨项目承接：把子需求派生到目标仓，生�
 
 用于「父需求在本仓、落地能力在另一个仓」的场景。派生出的子需求在目标仓建档，父需求通过 `dependsOn` 指向它（**父等子**，依赖只告警不阻塞，节奏由人工把控）。
 
+## 机械门禁与回流
+
+1. 派生前 `state_check {reqId, command:"risk"}` 确认需求存在且状态正常；随后调 `req_derive`（幂等键=父需求+目标仓）
+2. 目标仓把答案给出后，**在目标仓**调 `answer_return {reqId:<子REQ>, answers:[{question,answer}]}`：自动写回父仓 `derive/<子REQ>-answers.md` 并回填父仓 01-intake，不需要人工转发
+3. 父仓收到回流后在 log 记一行，并据此收敛 03-design 的契约
+
 ## 前置校验
 
 1. 参数缺失或缺少 `to` 时，提示格式：`/req-derive <本仓REQ编号> to <目标仓名或绝对路径>`，停止执行。

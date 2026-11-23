@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gwb.pi-workflow-gates",
   "name": "PI-Workflow Gates",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "pi-workflow 机械层门禁：建档与体量分级（req_init T0-T4）、状态机（state_check/state_transition 按级别裁剪）、EP-07 账本（metrics_record 含打回原因）、分层扫描（layer_scan）、变更编号（chg_next）、跨项目依赖与承接（registry_dep/registry_list/req_derive/answer_return）、一键接入（adopt_project）、文档机械检查（design_lint/trace_matrix）、验收证据（verify_record）、过程流水（log_append）、派发纪律（dispatch_record）、活规格（spec_merge）、一致性闸（analyze/converge/rework_top）、插件更新（check_update）。",
   "main": "main.js",
   "safetyNotes": "读当前工作区全部源码（用于依赖扫描）与 requirements/、docs/ 目录；写仅限 requirements/ 目录（含 log/ 过程流水与 evidence.json）。插件加载时把斜杠命令模板写入用户级 ~/.pi/agent/prompts（只覆盖带 managed-by 标记的文件，绝不改用户自己的同名模板）。adopt_project / req_derive 会按显式目标路径写入另一个本地 git 仓库（同步命令与文档、投放承接简报），执行前会校验目标路径与接入状态。自更新：加载时与每 4 小时读取 GitHub Release 的 latest.json，发现新版本会下载对应 .piplug 并覆盖插件自身安装目录（仅当安装在 plugins/installed 下；开发态不自我覆盖），重启 App 或 Reload 后生效；可用插件设置 autoUpdate=false 关闭自动安装、autoUpdateCheck=false 关闭检查。网络：仅访问上述版本清单与 .piplug 下载地址，不采集、不上传任何数据。不删业务文件、不执行进程。",

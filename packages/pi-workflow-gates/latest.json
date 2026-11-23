@@ -1,13 +1,9 @@
 {
-  "version": "0.12.0",
-  "tag": "v0.12.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.12.0/gwb.pi-workflow-gates-0.12.0.piplug",
-  "publishedAt": "2026-11-23T09:27:54.272Z",
+  "version": "0.12.1",
+  "tag": "v0.12.1",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.12.1/gwb.pi-workflow-gates-0.12.1.piplug",
+  "publishedAt": "2026-11-24T03:40:00.000Z",
   "notes": [
-    "把 8 个命令模板接上新门禁（此前工具存在但命令不调用，等于没生效）：design/review/dev/cr/test-plan/retro/req-new/change",
-    "提交时机写进命令：任务级本地 commit 允许，push/PR 必须等 cr-confirmed",
-    "CR 报告改「结论优先」（≤20 行），分轮明细落 reviews/issues.json",
-    "新增 rework_top：打回原因分类聚合；修复 metrics_record 覆盖旧记录的问题（改为累积）",
-    "新增 deferred-work 模板：做不完的余量显式记录，不静默膨胀"
+    "补齐遗漏：req-derive 接入 answer_return（问答自动回流），retro 接入 rework_top（打回原因统计）"
   ]
 }

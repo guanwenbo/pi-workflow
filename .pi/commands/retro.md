@@ -11,6 +11,7 @@ description: 归档复盘：产出复盘报告与流程改进提案，归档需�
 1. 若存在 `spec-delta.md`：先 `spec_merge {reqId, capability, dryRun:true}` 给用户看合并结果，确认后正式合并
 2. 归档前 `design_lint` 确认主链路无过程内容（过程应在 log/）
 3. `dispatch_record` 记录复盘角色
+4. `rework_top {}`：把最高频打回原因写进 11-retro 的「流程改进提案」，用数据决定模板/画像改哪里
 
 ## 前置校验
 
