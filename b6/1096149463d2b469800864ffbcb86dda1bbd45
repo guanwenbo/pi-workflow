@@ -1,0 +1,20 @@
+.pi/commands/req-derive.md
+  h_b98c004121ae66 13-18
+.pi/commands/retro.md
+  h_b98c004121ae66 14
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b61096149463d2b469800864ffbcb86dda1bbd45",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
