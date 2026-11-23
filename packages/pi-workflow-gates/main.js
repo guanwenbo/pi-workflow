@@ -1340,9 +1340,10 @@ const UPDATE_URLS = process.env.PI_WORKFLOW_UPDATE_URL
       "https://raw.githubusercontent.com/guanwenbo/pi-workflow/master/packages/pi-workflow-gates/latest.json",
       "https://raw.githubusercontent.com/guanwenbo/pi-workflow/main/packages/pi-workflow-gates/latest.json",
     ];
-const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
-// 加载后每隔这么久再查一次：App 常常连续开几天，只靠 onLoad 会一直不知道有新版。
-const UPDATE_TIMER_MS = 4 * 60 * 60 * 1000;
+// 节流 30 分钟：一天只在启动时查一次太钝——发版后要等一天才提示，用户会以为坏了。
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+// 每小时复查：配合 30 分钟节流，最坏 1.5 小时内一定能看到新版本提示。
+const UPDATE_TIMER_MS = 60 * 60 * 1000;
 const PLUGIN_ID = "gwb.pi-workflow-gates";
 // 仅供测试：绕过「必须装在 plugins/installed 下」的判据，把包解到指定目录。
 const SELF_UPDATE_DIR = process.env.PI_WORKFLOW_SELF_UPDATE_DIR || "";
@@ -1647,8 +1648,31 @@ async function checkUpdate(args) {
   }
 }
 
+/** 磁盘上的版本（已就绪、但内存里还没加载的那个）；读不到返回 null */
+function diskVersion() {
+  try {
+    const mf = JSON.parse(nodeFs.readFileSync(nodePath.join(__dirname, "manifest.json"), "utf8"));
+    return String(mf.version || "");
+  } catch { return null; }
+}
+
 /** 加载时静默检查：同一版本只提示一次，失败不打扰 */
 async function autoCheckUpdate() {
+  // 先看磁盘：磁盘比内存新，说明自动更新已落盘但还没重载，这个必须提示，否则用户以为没更新
+  try {
+    const mem = currentPluginVersion();
+    const disk = diskVersion();
+    if (disk && isNewerVersion(disk, mem)) {
+      const key = `reload:${disk}`;
+      const prev = readUpdateState();
+      if (prev && prev.notifiedFor === key) return { ok: true, pendingReload: true, version: disk };
+      writeUpdateState({ ...prev, notifiedFor: key, pendingReload: disk });
+      try {
+        await pi.ui.showToast(`PI-Workflow 已更新到 ${disk}（运行中仍是 ${mem}）：重启 App 或 Plugins 页 Reload 后生效`);
+      } catch { /* toast 失败不影响使用 */ }
+      return { ok: true, pendingReload: true, current: mem, version: disk, notified: true };
+    }
+  } catch { /* 读磁盘失败就继续正常联网检查 */ }
   try {
     let settings = {};
     try { settings = (await pi.plugin.getSettings()) || {}; } catch { settings = {}; }

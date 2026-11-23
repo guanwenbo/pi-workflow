@@ -257,6 +257,15 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   assert.strictEqual(reg2.plugins[1].version, "1.2.3", "不得改动别的插件");
   ok("宿主登记同步：只改本插件版本号，别的插件不动");
 
+  // ---------- 磁盘已更新但内存还是旧版：必须提示 Reload ----------
+  console.log("\n[自更新] 磁盘版本 > 内存版本");
+  toasts = [];
+  global.pi.plugin.getManifest = () => ({ version: "0.0.1" }); // 模拟运行中的旧版
+  fs.writeFileSync(path.join(DATA, "update-check.json"), JSON.stringify({ checkedAt: new Date().toISOString(), current: "0.0.1", latest: "0.0.1", upToDate: true }));
+  await plugin.onLoad();
+  assert.ok(toasts.some(t => /已更新到/.test(t) && /Reload/.test(t)), `应提示 Reload，实际 ${JSON.stringify(toasts)}`);
+  ok("磁盘已更新而内存仍旧版时，提示重启/Reload");
+
   console.log(`\n全部通过：${passed} 项断言组（临时目录 ${TMP}）`);
 })().catch(e => {
   console.error("\n✘ 测试失败：", e && e.message);

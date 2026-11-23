@@ -1,13 +1,10 @@
 {
-  "version": "0.13.0",
-  "tag": "v0.13.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.13.0/gwb.pi-workflow-gates-0.13.0.piplug",
-  "publishedAt": "2026-11-23T10:04:36.896Z",
+  "version": "0.14.0",
+  "tag": "v0.14.0",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.14.0/gwb.pi-workflow-gates-0.14.0.piplug",
+  "publishedAt": "2026-11-24T06:00:00.000Z",
   "notes": [
-    "用 5 个真实需求档案实测 lint，修 3 处误报：标题层级（1-4 级）、表格被当段落、无设计文件时缺 counts",
-    "章节全缺合并成一条报告，不再刷 7 条",
-    "trace_matrix 新增 taskNoDispatch：已勾选但查不到派发记录 → 疑似父 Agent 越权自己写",
-    "03-design 模板 245→200 行，删掉与 ARCHITECTURE 重复的条文，补 6.5 日志与链路",
-    "cr_gate 接 evidence（另一个插件）：无证据或无失败项才能过"
+    "修复「发版后不提示更新」：检查节流由 24 小时改为 30 分钟，周期检查由 4 小时改为 1 小时（最坏 1.5 小时内可见提示）",
+    "新增磁盘/内存版本比对：磁盘已更新但内存仍是旧版时，明确提示「重启 App 或 Reload 后生效」，不再静默"
   ]
 }
