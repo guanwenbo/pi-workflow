@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gwb.pi-code-review",
   "name": "PI-Workflow Code Review",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "pi-workflow 代码级评审判定层：轮次开档（cr_begin，含端归属）、工具输出归一（cr_ingest，12 类工具 + jar 冲突 dependency.tree）、规则豁免（cr_rule）、门禁判定（cr_gate）、报告落盘（cr_report，含端归属清单）、基线管理（cr_baseline）、改动画像（cr_profile）。执行层（跑 mvn/sonar、临时注入插件并回滚）由 Agent 的 Bash 与 scripts/review/run-l1.sh 完成，本插件不执行进程、不读 .git。",
   "main": "main.js",
   "safetyNotes": "读工作区全部文件（含源码、diff、工具原始产物、代码级评审档案）用于归一与判定；写仅限 requirements/ 目录。不执行任何进程，不访问网络，不读 .git（平台禁止），不修改源码，不删文件。",
@@ -15,23 +15,49 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号 REQ-YYYYMMDD-<slug>" },
-            "profile": { "type": "string", "description": "lite|std|full；缺省 auto 按 diffStat 定档（端归属不参与定档）" },
+            "reqId": {
+              "type": "string",
+              "description": "需求编号 REQ-YYYYMMDD-<slug>"
+            },
+            "profile": {
+              "type": "string",
+              "description": "lite|std|full；缺省 auto 按 diffStat 定档（端归属不参与定档）"
+            },
             "diffStat": {
               "type": "object",
               "description": "改动体量（由 Agent 用 git diff --shortstat 得出后传入；插件不跑 git）",
               "properties": {
-                "files": { "type": "number" },
-                "additions": { "type": "number" },
-                "deletions": { "type": "number" }
+                "files": {
+                  "type": "number"
+                },
+                "additions": {
+                  "type": "number"
+                },
+                "deletions": {
+                  "type": "number"
+                }
               }
             },
-            "touchedMoney": { "type": "boolean", "description": "改动是否触及金额/资产；为真则强制 full + V-money" },
-            "headSha": { "type": "string", "description": "当前 HEAD sha，用于判断同一提交已通过则跳过" },
-            "endScope": { "type": "string", "description": "可选：人工中途给的端归属建议（运营端|非运营端|批量任务|内部工具）；不传则由 L2 判定，不做档位调整" },
-            "incremental": { "type": "string", "description": "增量评审的起始 sha" }
+            "touchedMoney": {
+              "type": "boolean",
+              "description": "改动是否触及金额/资产；为真则强制 full + V-money"
+            },
+            "headSha": {
+              "type": "string",
+              "description": "当前 HEAD sha，用于判断同一提交已通过则跳过"
+            },
+            "endScope": {
+              "type": "string",
+              "description": "可选：人工中途给的端归属建议（运营端|非运营端|批量任务|内部工具）；不传则由 L2 判定，不做档位调整"
+            },
+            "incremental": {
+              "type": "string",
+              "description": "增量评审的起始 sha"
+            }
           },
-          "required": ["reqId"]
+          "required": [
+            "reqId"
+          ]
         }
       },
       {
@@ -41,12 +67,26 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "round": { "type": "number", "description": "轮次号；缺省取已落盘最高轮次" },
-            "diffPath": { "type": "string", "description": "unified diff 文件路径（相对工作区），如 requirements/<reqId>/reviews/R-01/diff.patch" },
-            "rawDir": { "type": "string", "description": "工具原始产物目录；缺省 reviews/R-NN/raw" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号；缺省取已落盘最高轮次"
+            },
+            "diffPath": {
+              "type": "string",
+              "description": "unified diff 文件路径（相对工作区），如 requirements/<reqId>/reviews/R-01/diff.patch"
+            },
+            "rawDir": {
+              "type": "string",
+              "description": "工具原始产物目录；缺省 reviews/R-NN/raw"
+            }
           },
-          "required": ["reqId"]
+          "required": [
+            "reqId"
+          ]
         }
       },
       {
@@ -56,15 +96,49 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "round": { "type": "number", "description": "轮次号" },
-            "fp": { "type": "string", "description": "问题指纹（issues.json 中的 fp）" },
-            "action": { "type": "string", "enum": ["downgrade", "waive"], "description": "动作" },
-            "level": { "type": "string", "enum": ["blocker", "major", "minor"], "description": "downgrade 的目标级别" },
-            "reason": { "type": "string", "description": "理由（waive 必填）" },
-            "until": { "type": "string", "description": "期限/责任人（waive 建议填）" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号"
+            },
+            "fp": {
+              "type": "string",
+              "description": "问题指纹（issues.json 中的 fp）"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "downgrade",
+                "waive"
+              ],
+              "description": "动作"
+            },
+            "level": {
+              "type": "string",
+              "enum": [
+                "blocker",
+                "major",
+                "minor"
+              ],
+              "description": "downgrade 的目标级别"
+            },
+            "reason": {
+              "type": "string",
+              "description": "理由（waive 必填）"
+            },
+            "until": {
+              "type": "string",
+              "description": "期限/责任人（waive 建议填）"
+            }
           },
-          "required": ["reqId", "fp", "action"]
+          "required": [
+            "reqId",
+            "fp",
+            "action"
+          ]
         }
       },
       {
@@ -74,10 +148,18 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号；缺省取最高轮次"
+            }
           },
-          "required": ["reqId"]
+          "required": [
+            "reqId"
+          ]
         }
       },
       {
@@ -87,11 +169,22 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" },
-            "note": { "type": "string", "description": "本轮补充说明（写入轮次头）" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号；缺省取最高轮次"
+            },
+            "note": {
+              "type": "string",
+              "description": "本轮补充说明（写入轮次头）"
+            }
           },
-          "required": ["reqId"]
+          "required": [
+            "reqId"
+          ]
         }
       },
       {
@@ -101,11 +194,28 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "action": { "type": "string", "enum": ["freeze", "update", "status"], "description": "动作" },
-            "round": { "type": "number", "description": "轮次号" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "freeze",
+                "update",
+                "status"
+              ],
+              "description": "动作"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号"
+            }
           },
-          "required": ["reqId", "action"]
+          "required": [
+            "reqId",
+            "action"
+          ]
         }
       },
       {
@@ -115,20 +225,52 @@
         "schema": {
           "type": "object",
           "properties": {
-            "reqId": { "type": "string", "description": "需求编号" },
-            "round": { "type": "number", "description": "轮次号；缺省取最高轮次" },
-            "changedFiles": { "type": "array", "items": { "type": "string" }, "description": "改动文件清单（可选；不传则从 plan.diffStat 与 diff 推断）" }
+            "reqId": {
+              "type": "string",
+              "description": "需求编号"
+            },
+            "round": {
+              "type": "number",
+              "description": "轮次号；缺省取最高轮次"
+            },
+            "changedFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "改动文件清单（可选；不传则从 plan.diffStat 与 diff 推断）"
+            }
           },
-          "required": ["reqId"]
+          "required": [
+            "reqId"
+          ]
         }
       }
     ]
   },
-  "permissions": ["agent.tool.register", "fs.read", "fs.write"],
+  "permissions": [
+    "agent.tool.register",
+    "fs.read",
+    "fs.write"
+  ],
   "fs": {
-    "read": { "root": "workspace", "scope": ["**"] },
-    "write": { "root": "workspace", "scope": ["requirements/**"] }
+    "read": {
+      "root": "workspace",
+      "scope": [
+        "**"
+      ]
+    },
+    "write": {
+      "root": "workspace",
+      "scope": [
+        "requirements/**"
+      ]
+    }
   },
-  "engines": { "piDesktop": ">=0.9.0" },
-  "activationEvents": ["onStartup"]
+  "engines": {
+    "piDesktop": ">=0.9.0"
+  },
+  "activationEvents": [
+    "onStartup"
+  ]
 }

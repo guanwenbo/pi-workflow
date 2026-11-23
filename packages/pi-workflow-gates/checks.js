@@ -53,25 +53,30 @@ function frontmatter(text) {
   return out;
 }
 
-/** 按标题切段：{ "一、需求背景": "正文", ... }（标题去掉序号前缀） */
-function sections(text) {
-  const out = {};
+/**
+ * 取「某章节」正文：支持 1-4 级标题、任意序号前缀（一、/1. 等）。
+ * 为什么不用固定 ## ：历史档案里标题层级不统一，只认 ## 会整篇误报「缺章节」。
+ */
+function sectionBody(text, name) {
   const lines = String(text || "").split("\n");
-  let cur = null;
-  const buf = [];
-  const flush = () => { if (cur) out[cur] = buf.join("\n"); buf.length = 0; };
-  for (const line of lines) {
-    const h = line.match(/^##\s+(.+?)\s*$/);
-    if (h) {
-      flush();
-      cur = h[1].replace(/^[一二三四五六七八九十]+、\s*/, "").trim();
-      continue;
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^(#{1,4})\s+(.+?)\s*$/);
+    if (!h) continue;
+    const title = h[2].replace(/^[一二三四五六七八九十百]+、\s*/, "").replace(/^\d+(\.\d+)*[.、]?\s*/, "").trim();
+    if (!title.includes(name)) continue;
+    const level = h[1].length;
+    const buf = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const n = lines[j].match(/^(#{1,4})\s+/);
+      if (n && n[1].length <= level) break;
+      buf.push(lines[j]);
     }
-    if (cur) buf.push(line);
+    return buf.join("\n");
   }
-  flush();
-  return out;
+  return null;
 }
+
+function hasSection(text, name) { return sectionBody(text, name) !== null; }
 
 /** 解析第一个表头包含所有关键词的 markdown 表，返回 [{列名: 值}] */
 function table(text, mustHave) {
@@ -121,17 +126,18 @@ async function designLint(reqId, opts = {}) {
   }
 
   const design = await readDoc(reqId, DOC.design);
-  if (!design) return { ok: true, mode, findings, note: "尚无 03-design.md，跳过设计检查" };
+  if (!design) return { ok: true, mode, findings, counts: { blocker: 0, major: 0, minor: 0 }, note: "尚无 03-design.md，跳过设计检查" };
 
-  const sec = sections(design);
-
-  // 2) 七部分结构
-  for (const s of DESIGN_SECTIONS) {
-    if (!Object.keys(sec).some(k => k.includes(s))) add("blocker", "section-missing", `缺少「${s}」章节`);
+  // 2) 七部分结构：全缺只报一条（老档案没按模板写，逐条刷 7 条没信息量）
+  const missingSections = DESIGN_SECTIONS.filter(n => !hasSection(design, n));
+  if (missingSections.length === DESIGN_SECTIONS.length) {
+    add("blocker", "section-missing", "文档未按七部分结构组织（需求背景/业务流程/领域划分/实体设计/数据建模/落地实现/边界场景）");
+  } else {
+    for (const name of missingSections) add("blocker", "section-missing", `缺少「${name}」章节`);
   }
 
   // 3) 术语表 + 自造词
-  const termText = sec["术语表"] || sec["名词解释"] || "";
+  const termText = sectionBody(design, "术语表") || sectionBody(design, "名词解释") || "";
   const defined = new Set((termText.match(/[\u4e00-\u9fa5]{2,}/g) || []).concat(termText.match(/[A-Za-z][A-Za-z0-9]+/g) || []));
   const cands = new Set();
   for (const m of design.matchAll(new RegExp(INVENTED_SUFFIX.source, "g"))) {
@@ -159,9 +165,9 @@ async function designLint(reqId, opts = {}) {
   }
 
   // 5) 复用论证（反过度设计）：新增抽象必须有「为何不能复用」
-  const implText = sec["落地实现"] || "";
+  const implText = sectionBody(design, "落地实现") || "";
   const newAbstractions = [...new Set((implText.match(/\b[A-Z]\w*(Service|Manager|Facade|Helper|Handler)\b/g) || []))];
-  const reuse = sec["复用论证"] || "";
+  const reuse = sectionBody(design, "复用论证") || "";
   if (newAbstractions.length && !reuse) {
     add("major", "reuse-missing", `新增抽象（${newAbstractions.slice(0, 4).join("、")}）缺少「复用论证」：逐个说明为何不能复用现有代码`);
   }
@@ -181,7 +187,14 @@ async function designLint(reqId, opts = {}) {
   }
 
   // 7) 精简：段落句数 / 列表项数 / 全文行数
-  const paragraphs = design.split(/\n\s*\n/).filter(p => !p.trim().startsWith("#") && !p.trim().startsWith("|"));
+  const prose = design.replace(/```[\s\S]*?```/g, ""); // 代码块不是正文
+  const paragraphs = prose.split(/\n\s*\n/).filter(block => {
+    const lines = block.split("\n").filter(l => l.trim());
+    if (!lines.length) return false;
+    if (/^\s*(#|\||[-*]\s|>)/.test(lines[0])) return false;          // 标题/表格/列表/引用
+    const structured = lines.filter(l => /^\s*(\||[-*]\s|\d+[.)]\s)/.test(l)).length;
+    return structured < lines.length * 0.5;                            // 表格列表为主的块跳过
+  });
   for (const p of paragraphs) {
     const sentences = (p.match(/[。！？!?]/g) || []).length;
     if (sentences > LIMITS.paragraphSentences) {
@@ -217,6 +230,24 @@ async function designLint(reqId, opts = {}) {
 }
 
 // ---------- trace_matrix ----------
+
+/** 读过程流水里的派发记录：派发 <角色>｜任务：<T-01 …> */
+async function dispatchOf(reqId) {
+  let files = [];
+  try {
+    files = (await pi.fs.list(`requirements/${reqId}/log`)).filter(e => !e.isDirectory).map(e => e.name);
+  } catch { return []; }
+  const out = [];
+  for (const f of files) {
+    let text;
+    try { text = await pi.fs.readText(`requirements/${reqId}/log/${f}`); } catch { continue; }
+    for (const m of text.matchAll(/派发\s+([^｜\n]+)｜任务：([^｜\n]+)/g)) {
+      const tasks = (m[2].match(/T-\d+/g) || []);
+      out.push({ role: m[1].trim(), task: m[2].trim(), tasks });
+    }
+  }
+  return out;
+}
 
 async function evidenceOf(reqId) {
   try {
@@ -268,6 +299,7 @@ async function traceMatrix(reqId) {
   }
 
   const evidence = await evidenceOf(reqId);
+  const dispatches = await dispatchOf(reqId);
   const evByTask = new Map();
   for (const e of evidence) {
     const list = evByTask.get(e.task) || [];
@@ -287,12 +319,19 @@ async function traceMatrix(reqId) {
     };
   });
 
+  const hasCoversColumn = /\|/.test(tasksDoc) && /覆盖\s*AC|覆盖AC/.test(tasksDoc);
   const gaps = {
-    acNoTask: rows.filter(r => !r.tasks.length).map(r => r.ac),
+    // 老档案没有「覆盖AC」列：只报一次「缺列」，不把每条 AC 都列成缺口
+    tasksNoCoversColumn: hasCoversColumn || !tasksDoc ? [] : ["05-tasks.md"],
+    acNoTask: hasCoversColumn ? rows.filter(r => !r.tasks.length).map(r => r.ac) : [],
     acNoCase: rows.filter(r => !r.cases.length).map(r => r.ac),
     acNoEvidence: rows.filter(r => !r.evidence && r.tasks.length).map(r => r.ac),
     taskNoVerify: taskRows.filter(t => !t.verify).map(t => t.id),
     taskNoEvidence: taskRows.filter(t => t.done && !(evByTask.get(t.id) || []).length).map(t => t.id),
+    // 已勾选但查不到派发记录 → 大概率是父 Agent 自己动手写的（越权），要人看
+    taskNoDispatch: taskRows
+      .filter(t => t.done && !dispatches.some(d => d.tasks.includes(t.id)))
+      .map(t => t.id),
   };
   return { reqId, acs: rows, tasks: taskRows.length, cases: cases.length, evidence: evidence.length, gaps, ok: !gaps.acNoTask.length };
 }
@@ -303,4 +342,4 @@ function parseIds(text) {
   return [...new Set(String(text || "").match(/\b(?:AC|TC)-\d+\b/g) || [])];
 }
 
-module.exports = { designLint, traceMatrix, evidenceOf, readDoc, frontmatter, sections, table, DOC };
+module.exports = { designLint, traceMatrix, evidenceOf, dispatchOf, readDoc, frontmatter, sectionBody, hasSection, table, DOC };

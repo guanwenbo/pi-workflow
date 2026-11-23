@@ -757,6 +757,16 @@ async function crGate(args) {
 
   const reasons = [];
   if (openBlocker.length) reasons.push(`open blocker ${openBlocker.length} 条：${openBlocker.map(i => i.fp).join(", ")}`);
+
+  // 验收证据：任务「完成」以证据为准。本插件只管证据有无与结果，任务清单归 pi-workflow-gates 维护
+  const evDoc = await readJson(`requirements/${reqId}/evidence.json`, null);
+  const evList = Array.isArray(evDoc) ? evDoc : (evDoc && evDoc.entries) || null;
+  if (!evList || !evList.length) {
+    reasons.push("缺少验收证据：已完成任务须先调 verify_record 落 evidence.json");
+  } else {
+    const failed = evList.filter(e => e.pass === false);
+    if (failed.length) reasons.push(`验收证据有失败项 ${failed.length} 条：${failed.map(e => e.task).join(", ")}`);
+  }
   if (r6open.length) reasons.push(`R6 无用代码未删除 ${r6open.length} 条（删除后需重跑 L1）`);
   if (streak >= 2) reasons.push(`sonar 连续 ${streak} 轮不可用，覆盖不足（需用户显式 waive）`);
 

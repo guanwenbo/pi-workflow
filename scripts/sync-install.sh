@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 同步本地插件到 PI-Desktop 安装目录（开发态用；正式使用走 Release .piplug）
 # 把仓库里的插件源码同步到 PI-Desktop 的安装目录。
 #
 # 会先重建内嵌脚手架（scaffold.generated.js）：分发包里插件目录之外没有 pi-workflow 仓库，
@@ -51,3 +52,19 @@ NODE
 fi
 
 echo "✓ 完成：$DEST ($(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$DEST/manifest.json','utf8')).version)"))"
+
+# 第二个插件：代码评审（同样按目录复制，漏文件会加载失败）
+PKG2="$(cd "$(dirname "$0")/.." && pwd)/packages/pi-code-review"
+DEST2="$HOME/.pi-desktop/plugins/installed/gwb.pi-code-review"
+if [ -d "$PKG2" ] && [ -d "$DEST2" ]; then
+  for f in "$PKG2"/*.js "$PKG2"/*.json; do cp "$f" "$DEST2/"; done
+  [ -d "$PKG2/rules" ] && cp -R "$PKG2/rules" "$DEST2/" 2>/dev/null || true
+  node -e "
+const fs=require('fs'),file=process.argv[1],id=process.argv[2];
+const reg=JSON.parse(fs.readFileSync(file,'utf8'));
+const list=Array.isArray(reg)?reg:(reg.plugins||[]);
+const hit=list.find(p=>p.id===id);
+if(hit){hit.version=JSON.parse(fs.readFileSync(process.argv[3],'utf8')).version;fs.writeFileSync(file,JSON.stringify(reg,null,2)+'\n');console.log('→ registry.json 已置 '+id+' '+hit.version);}
+" "$HOME/.pi-desktop/plugins/registry.json" "gwb.pi-code-review" "$PKG2/manifest.json"
+  echo "✓ 已同步 gwb.pi-code-review"
+fi
