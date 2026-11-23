@@ -1,0 +1,44 @@
+.pi/commands/change.md
+  h_b98c004121ae66 9-14
+.pi/commands/cr.md
+  h_b98c004121ae66 9-16
+.pi/commands/design.md
+  h_b98c004121ae66 9-14
+.pi/commands/dev.md
+  h_b98c004121ae66 9-15
+.pi/commands/req-new.md
+  h_b98c004121ae66 9-22
+.pi/commands/retro.md
+  h_b98c004121ae66 9-14
+.pi/commands/review.md
+  h_b98c004121ae66 9-15
+.pi/commands/test-plan.md
+  h_b98c004121ae66 9-14
+docs/WORKFLOW.md
+  h_b98c004121ae66 110-111
+docs/templates/06-cr-report.md
+  h_b98c004121ae66 5-13
+docs/templates/deferred-work.md
+  h_b98c004121ae66 1-7
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-11
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 1046-1049,1201-1231,2068-2077
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 74-75
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 91-92,346-355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "88e69e1e9a7b0182fd1ce3ff8e70bd8a1970ffd0",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
