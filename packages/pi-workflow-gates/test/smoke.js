@@ -88,8 +88,8 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 20, "应注册 20 个工具");
-  ok("插件加载：20 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 21, "应注册 21 个工具");
+  ok("插件加载：21 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
@@ -342,6 +342,16 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
     WS = PARENT;
     ok("契约问答回流：目标仓答复自动写回父仓 derive/");
   }
+
+  // ---------- 10. 打回原因统计 ----------
+  console.log("\n[10] rework_top");
+  await call("metrics_record", { reqId: parentId, kind: "human_reject", note: "自造词看不懂", reason: "自造词" });
+  await call("metrics_record", { reqId: parentId, kind: "human_reject", note: "又一处自造词", reason: "自造词" });
+  const rt = await call("rework_top", {});
+  assert.strictEqual(rt.ok, true);
+  assert.strictEqual(rt.reasons[0].reason, "自造词");
+  assert.ok(rt.reasons[0].count >= 2, `应聚合到至少 2 次，实际 ${rt.reasons[0].count}`);
+  ok(`打回原因聚合：TOP1「${rt.reasons[0].reason}」${rt.reasons[0].count} 次`);
 
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {

@@ -6,6 +6,13 @@ description: 设计评审：评审员审查设计稿+测试计划，Agent 评审
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁
+
+1. `state_check {reqId, command:"review"}`
+2. `design_lint {reqId, mode:"block"}`：有 blocker 直接拒绝进入评审
+3. `trace_matrix {reqId}`：`acNoCase` 清单必须给用户看，确认后才可置 confirmed
+4. 派发评审员前 `dispatch_record`
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。

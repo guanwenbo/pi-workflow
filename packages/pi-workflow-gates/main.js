@@ -1043,7 +1043,10 @@ async function metricsRecord(args) {
   } else if (kind === "human_reject") {
     const { n } = parseMetricRow(content, "返工次数"); // 人工打回同时计返工（EP-07）
     // 打回原因带分类（reason），复盘时能统计 TOP 原因，而不是只看自由文本
-    content = setMetricRow(content, "人工打回原因", reason ? `[${reason}] ${note}` : note, today());
+    // 累积而不是覆盖：台账要能统计 TOP 原因，覆盖后只剩最后一次
+    const curCell = ((content.match(/^\|\s*人工打回原因\s*\|([^|]*)\|/m) || [])[1] || "").trim();
+    const entry = reason ? `[${reason}] ${note}` : note;
+    content = setMetricRow(content, "人工打回原因", (!curCell || /^<.*>$/.test(curCell)) ? entry : `${curCell}；${entry}`, today());
     content = setMetricRow(content, "返工次数", n + 1, `${n + 1} = ${n} + 1（人工打回）`);
     result = { metric: "人工打回原因", value: note, rework: n + 1 };
   } else {
@@ -1193,6 +1196,37 @@ async function answerReturn(args) {
 
   await appendLog(reqId, "父Agent", `契约问答回流 → ${parentId}（${answers.length} 条）`);
   return { ok: true, child: reqId, parent: parentId, file, intakeUpdated: nodeFs.existsSync(intakeAbs) };
+}
+
+// ---------- rework_top：打回原因统计 ----------
+// 目的：把「反复打回同一类问题」从印象变成数据，喂给模板与画像迭代。
+async function reworkTop(args) {
+  const { limit = 5 } = args || {};
+  let dirs = [];
+  try {
+    dirs = (await pi.fs.list("requirements")).filter(e => e.isDirectory && e.name.startsWith("REQ-")).map(e => e.name);
+  } catch { return { ok: true, total: 0, reasons: [], note: "当前工作区没有 requirements/" }; }
+
+  const counts = new Map();
+  let total = 0;
+  for (const id of dirs) {
+    let text;
+    try { text = await pi.fs.readText(`requirements/${id}/00-meta.md`); } catch { continue; }
+    const m = text.match(/^\|\s*人工打回原因\s*\|([^|]*)\|/m);
+    if (!m) continue;
+    const raw = m[1].trim();
+    if (!raw || /^<.*>$/.test(raw)) continue;
+    total += 1;
+    for (const part of raw.split(/[；;]/)) {
+      const tag = (part.match(/\[([^\]]+)\]/) || [])[1] || "未分类";
+      counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+  }
+  const reasons = [...counts.entries()]
+    .map(([reason, n]) => ({ reason, count: n }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+  return { ok: true, total, reasons, hint: reasons.length ? `最高频打回原因：${reasons[0].reason}（${reasons[0].count} 次）——模板或画像该改这里` : "暂无打回记录" };
 }
 
 // ---------- 斜杠命令全局外漏 ----------
@@ -2030,6 +2064,16 @@ const TOOLS = [
       required: ["reqId", "answers"],
     },
     execute: answerReturn,
+  },
+  {
+    name: "rework_top",
+    description: "打回原因统计：扫描 requirements/*/00-meta.md 的「人工打回原因」行，按分类（reason）聚合返回 TOP N。复盘时用它判断模板/画像该改哪里，而不是凭印象。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: { limit: { type: "number", description: "返回前 N 项，缺省 5" } },
+    },
+    execute: reworkTop,
   },
 ];
 

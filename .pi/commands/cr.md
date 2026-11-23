@@ -6,6 +6,14 @@ description: 架构师 Agent CR：分级审查改动、循环修复直至无 blo
 > **EP-05 门禁**：任何改动（含 CR 修复、minor 加固、父 Agent 直接小修）都必须过架构师CR 后才算完成；增量改动走**聚焦增量 CR**（评审范围限定为该增量 commit），流程与本命令相同。
 # /cr
 
+## 机械门禁
+
+1. **进 CR 前 `converge {reqId}` 必须 clean=true**；不干净就补齐后重跑（它会追加任务到 05-tasks）
+2. `trace_matrix` 与 `design_lint` 的结论并入 06-cr-report 顶部「结论」段，分轮明细落 `reviews/issues.json`
+3. 每个 blocker/major 修完重新 `converge`；`dispatch_record` 记录每轮 CR 的模型
+4. 提交时机：`cr-confirmed` 之前不得 push / 开 PR
+
+
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
 ## 前置校验

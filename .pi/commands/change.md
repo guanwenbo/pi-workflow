@@ -6,6 +6,12 @@ description: 变更管理：创建变更单、评估影响，审批后回流受�
 
 参数：`REQ-YYYYMMDD-<slug> <变更描述>`（均必填）
 
+## 机械门禁
+
+1. `state_transition {reqId, to:"change-requested", note:"<变更原因>"}`
+2. 若变更扩大了范围（例如 T1 要加表、加对外接口）：**必须同时升级 tier**（只升不降），在变更单写明理由
+3. 变更单产出后先过架构师方案评审（`dispatch_record` + `design_lint`），再交用户审批
+
 ## 前置校验
 
 1. 若参数缺失，提示：「格式：`/change REQ-YYYYMMDD-<slug> <变更描述>`」，停止执行。

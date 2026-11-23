@@ -6,6 +6,12 @@ description: 方案设计：派发架构设计师产出 DDD 设计稿，并同�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁（先调工具再继续）
+
+1. `state_check {reqId, command:"design"}`：ok=false 立即停止，按 hint 提示用户
+2. 产出 03-design 与 08-test-plan 后调 `design_lint {reqId}`：warn 把问题清单原样报给用户；block 模式下有 blocker 不得进入 `/review`
+3. 派发架构师/测试工程师前调 `dispatch_record`（role、task、model、只读文件）：模型须与 `docs/role-bindings.json` 一致，不一致会被拒
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。

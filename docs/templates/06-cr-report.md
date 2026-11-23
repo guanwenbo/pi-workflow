@@ -2,6 +2,15 @@
 
 <!-- 本文件对应需求档案中的 06-cr-report.md，在 cr-agent 阶段按轮次记录 Agent 代码审查结果；所有 blocker/major 关闭后方可提交人工复验（cr-human）。 -->
 
+## 结论（放最前，≤20 行）
+
+- 结论：<通过 / 不通过>
+- blocker <n> / major <n> / minor <n>
+- 一句话总结：<本轮最关键的问题是什么>
+- 下一步：<修复后复审 / 进入人工复验>
+
+> 分轮明细不写在这里：逐轮问题与修复记录落 `reviews/issues.json`；过程演进写 `log/YYYY-MM-DD.md`。
+
 ## 第 1 轮 CR
 
 - 时间：YYYY-MM-DD HH:mm

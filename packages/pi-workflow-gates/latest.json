@@ -1,13 +1,13 @@
 {
-  "version": "0.11.0",
-  "tag": "v0.11.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.11.0/gwb.pi-workflow-gates-0.11.0.piplug",
-  "publishedAt": "2026-11-23T09:24:05.765Z",
+  "version": "0.12.0",
+  "tag": "v0.12.0",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.12.0/gwb.pi-workflow-gates-0.12.0.piplug",
+  "publishedAt": "2026-11-24T03:00:00.000Z",
   "notes": [
-    "活规格：spec_merge 把需求增量并入 specs/<capability>/spec.md，归档不再「档案即沉没」",
-    "派发纪律物理化：dispatch_record 校验角色→模型绑定（docs/role-bindings.json），擅自换模型直接拒；progress 记录长跑进度",
-    "契约问答回流：answer_return 把目标仓答复自动写回父仓 derive/ 与 01-intake，不再人工转发",
-    "新增 /explore 只读探索命令：不建档案、不进状态机，先想清楚再立项",
-    "spec-delta 模板 + 粒度指引（≈500 行/会话、deferred-work、[P] 并行标记）"
+    "把 8 个命令模板接上新门禁（此前工具存在但命令不调用，等于没生效）：design/review/dev/cr/test-plan/retro/req-new/change",
+    "提交时机写进命令：任务级本地 commit 允许，push/PR 必须等 cr-confirmed",
+    "CR 报告改「结论优先」（≤20 行），分轮明细落 reviews/issues.json",
+    "新增 rework_top：打回原因分类聚合；修复 metrics_record 覆盖旧记录的问题（改为累积）",
+    "新增 deferred-work 模板：做不完的余量显式记录，不静默膨胀"
   ]
 }

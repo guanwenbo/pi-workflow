@@ -6,6 +6,12 @@ description: 归档复盘：产出复盘报告与流程改进提案，归档需�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁
+
+1. 若存在 `spec-delta.md`：先 `spec_merge {reqId, capability, dryRun:true}` 给用户看合并结果，确认后正式合并
+2. 归档前 `design_lint` 确认主链路无过程内容（过程应在 log/）
+3. `dispatch_record` 记录复盘角色
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。

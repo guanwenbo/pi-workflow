@@ -6,6 +6,13 @@ description: 开发实现：派发开发工程师按 WBS 逐项实现并更新�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁（本命令最关键，缺一步就停）
+
+1. **开工前 `analyze {reqId}` 必须 clean=true**：不 clean 就按 gaps 回到归属步骤修（缺 AC 回 `/req-clarify`、缺设计回 `/design`、缺任务回 `/breakdown`），修完重跑
+2. 每完成一个任务：先跑它的 verify 命令 → `verify_record {reqId, task, command, exitCode}` → 再勾 `[x]`。**没有证据的勾选不算完成**
+3. 每次派发调 `dispatch_record`（模型取 `docs/role-bindings.json`，不得擅自更换）；长跑任务每 10 分钟补一条 `kind:"progress"`
+4. **提交时机**：任务级本地 commit 允许（`REQ-xxx: 描述`）；**push / 开 PR 必须等 `/cr` 通过（cr-confirmed）之后**
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。

@@ -6,6 +6,12 @@ description: 测试执行与用例回归：执行设计期产出的测试用例�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁
+
+1. `state_check {reqId, command:"test-plan"}`
+2. `trace_matrix {reqId}`：`acNoCase` 的每一条 AC 必须先补用例再执行
+3. 每条用例执行结果用 `verify_record` 落证据（task 填用例编号），不靠散文回填
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status`。
