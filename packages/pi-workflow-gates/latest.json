@@ -2,7 +2,7 @@
   "version": "0.10.0",
   "tag": "v0.10.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.10.0/gwb.pi-workflow-gates-0.10.0.piplug",
-  "publishedAt": "2026-11-23T10:00:00.000Z",
+  "publishedAt": "2026-11-23T07:42:45.639Z",
   "notes": [
     "体量分级 T0-T4：req_init 收 tier，状态机与命令按级别物理裁剪（小 bug 不再跑 15 态全量）",
     "design_lint：七部分/术语表/调用链路八列/复用论证/编号带名/主链路禁过程/精简/日志，默认 warn 可切 block",
