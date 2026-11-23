@@ -24,6 +24,11 @@ VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('
 
 echo "→ 同步 $ID@$VERSION 到 $DEST"
 rm -rf "$DEST/renderer" "$DEST/assets"
+# 复制插件全部运行时代码：漏一个文件插件就加载失败（checks.js 曾漏过）
+for f in "$PKG"/*.js "$PKG"/*.json; do
+  [ "$(basename "$f")" = "scaffold.generated.js" ] && continue
+  cp "$f" "$DEST/"
+done
 cp "$PKG/main.js" "$DEST/main.js"
 cp "$PKG/manifest.json" "$DEST/manifest.json"
 cp "$PKG/README.md" "$DEST/README.md"
