@@ -1,0 +1,14 @@
+scripts/sync-install.sh
+  h_b98c004121ae66 27-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e04565bcf03ff1537bf0e35fc02a06fa77267094",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
