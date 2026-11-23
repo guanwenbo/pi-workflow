@@ -2,7 +2,7 @@
   "version": "0.11.0",
   "tag": "v0.11.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.11.0/gwb.pi-workflow-gates-0.11.0.piplug",
-  "publishedAt": "2026-11-24T02:00:00.000Z",
+  "publishedAt": "2026-11-23T09:24:05.765Z",
   "notes": [
     "活规格：spec_merge 把需求增量并入 specs/<capability>/spec.md，归档不再「档案即沉没」",
     "派发纪律物理化：dispatch_record 校验角色→模型绑定（docs/role-bindings.json），擅自换模型直接拒；progress 记录长跑进度",
