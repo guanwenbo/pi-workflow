@@ -1055,6 +1055,146 @@ async function metricsRecord(args) {
   return { ok: true, reqId, ...result };
 }
 
+// ---------- dispatch_record：派发纪律物理化 ----------
+// 用户反复踩的两个坑：父 Agent 越权自己干、擅自换掉指定模型。
+// 前者靠「插件只允许写 requirements/**」拦了一半；后者靠这里的绑定校验。
+// 绑定文件：<项目>/docs/role-bindings.json，形如 { "架构师CR": "custom/GPT-6-Sol-joybuilder" }
+
+async function readBindings() {
+  try {
+    const raw = await pi.fs.readText("docs/role-bindings.json");
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+async function dispatchRecord(args) {
+  const { reqId, role, task, model, files, kind = "dispatch" } = args || {};
+  if (!reqId || !role) throw new Error("缺少必填参数：reqId / role");
+  await readMeta(reqId);
+
+  if (kind === "progress") {
+    if (!task) throw new Error("progress 需要 task（一句话进度）");
+    const file = await appendLog(reqId, role, `[进度] ${task}`);
+    return { ok: true, reqId, kind, file };
+  }
+
+  const bindings = await readBindings();
+  const bound = bindings && bindings[role];
+  let modelOk = true;
+  let hint;
+  if (bound && model && model !== bound) {
+    modelOk = false;
+    hint = `角色「${role}」绑定模型为 ${bound}，本次传入 ${model}——未经用户同意不得更换模型`;
+  }
+  const line = `派发 ${role}｜任务：${task || "-"}${model ? `｜模型：${model}${bound ? `（绑定 ${bound}）` : ""}` : ""}${files && files.length ? `｜只读：${files.join(", ")}` : ""}`;
+  const file = await appendLog(reqId, "父Agent", line);
+  return { ok: modelOk, reqId, role, bound: bound || null, model: model || null, file, ...(modelOk ? {} : { hint }) };
+}
+
+// ---------- spec_merge：活规格合并（归档时把 delta 并进 specs/）----------
+// 为什么需要：需求档案归档即沉没，下个需求的 agent 只能考古。
+// 活规格 specs/<capability>/spec.md 记录「系统当前行为」，每条变更只写增量，归档时合并。
+
+async function specMerge(args) {
+  const { reqId, capability, dryRun } = args || {};
+  if (!reqId || !capability) throw new Error("缺少必填参数：reqId / capability（能力名，如 coupon-issue）");
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(capability)) {
+    throw new Error(`capability 非法：${capability}（小写字母/数字/连字符）`);
+  }
+
+  const deltaPath = `requirements/${reqId}/spec-delta.md`;
+  let delta;
+  try { delta = await pi.fs.readText(deltaPath); } catch {
+    throw new Error(`缺少 ${deltaPath}：请先写增量（### ADDED R-01 名称 / ### MODIFIED R-02 / ### REMOVED R-03）`);
+  }
+
+  // 解析增量块：### ADDED|MODIFIED|REMOVED <ID> <名称>
+  const blocks = [];
+  const lines = delta.split("\n");
+  let cur = null;
+  for (const line of lines) {
+    const m = line.match(/^###\s+(ADDED|MODIFIED|REMOVED)\s+(R-\d+)\s*(.*)$/);
+    if (m) { cur = { op: m[1], id: m[2], name: m[3].trim(), body: [] }; blocks.push(cur); continue; }
+    if (cur) cur.body.push(line);
+  }
+  if (!blocks.length) throw new Error(`${deltaPath} 没有可合并的条目（格式：### ADDED R-01 名称）`);
+
+  const target = `specs/${capability}/spec.md`;
+  let doc;
+  try { doc = await pi.fs.readText(target); } catch {
+    doc = `# 能力规格：${capability}\n\n> 系统当前行为（活规格）。由 spec_merge 从需求增量合并，勿手改历史条目。\n`;
+  }
+
+  const stats = { added: 0, modified: 0, removed: 0 };
+  for (const b of blocks) {
+    const section = `\n### ${b.id} ${b.name}\n${b.body.join("\n").trim()}\n`;
+    const existed = new RegExp(`\\n### ${b.id} [^\\n]*\\n[\\s\\S]*?(?=\\n### |\\s*$)`);
+    if (b.op === "REMOVED") {
+      if (existed.test(doc)) { doc = doc.replace(existed, "\n"); stats.removed += 1; }
+      continue;
+    }
+    if (existed.test(doc)) { doc = doc.replace(existed, section); stats.modified += 1; }
+    else { doc = doc.replace(/\s*$/, "\n") + section; stats.added += 1; }
+  }
+
+  if (!dryRun) {
+    await pi.fs.writeText(target, doc.replace(/\n{3,}/g, "\n\n"));
+    await appendLog(reqId, "父Agent", `spec_merge → ${target}（+${stats.added} ~${stats.modified} -${stats.removed}）`);
+  }
+  return { ok: true, reqId, capability, file: target, ...stats, dryRun: !!dryRun };
+}
+
+// ---------- answer_return：跨项目契约问答回流 ----------
+// 派生时父仓把问题投到目标仓 inbox；目标仓答复后必须能自动回传，而不是靠人肉转发。
+
+async function answerReturn(args) {
+  const { reqId, answers } = args || {};
+  if (!reqId || !Array.isArray(answers) || !answers.length) {
+    throw new Error("缺少必填参数：reqId / answers（[{question, answer}]，至少一条）");
+  }
+  const reg = await readRegistry();
+  const me = reg.requirements[reqId];
+  if (!me) throw new Error(`${reqId} 未在跨项目注册中心登记`);
+  const parentId = me.derivedFrom;
+  if (!parentId) throw new Error(`${reqId} 不是派生需求（无 derivedFrom），无需回流`);
+
+  const parent = reg.requirements[parentId];
+  if (!parent || !parent.projectRoot) throw new Error(`找不到父需求 ${parentId} 的仓库路径`);
+  const parentRoot = parent.projectRoot;
+  if (!nodeFs.existsSync(parentRoot)) throw new Error(`父仓路径不可访问：${parentRoot}`);
+
+  const rel = nodePath.join("requirements", parentId, "derive");
+  const absDir = nodePath.join(parentRoot, rel);
+  nodeFs.mkdirSync(absDir, { recursive: true });
+  const file = nodePath.join(absDir, `${reqId}-answers.md`);
+
+  // 幂等：同一问题重复回答只保留最新
+  const seen = new Map();
+  if (nodeFs.existsSync(file)) {
+    const old = nodeFs.readFileSync(file, "utf8");
+    for (const m of old.matchAll(/^### Q: (.+)$/gm)) seen.set(m[1].trim(), true);
+  }
+  const body = answers
+    .map(a => `### Q: ${String(a.question || "").trim()}\n${String(a.answer || "").trim()}\n`)
+    .join("\n");
+  const header = `# 派生需求问答回流：${reqId}\n\n> 目标仓回答后自动回传，父仓据此收敛契约。\n\n`;
+  nodeFs.writeFileSync(file, header + body + (nodeFs.existsSync(file) ? "" : ""));
+
+  // 父需求 intake 追加一段，保证父仓 agent 读到
+  const intakeAbs = nodePath.join(parentRoot, "requirements", parentId, "01-intake.md");
+  if (nodeFs.existsSync(intakeAbs)) {
+    const old = nodeFs.readFileSync(intakeAbs, "utf8");
+    const section = `\n## 跨项目问答回流（${reqId}）\n\n` +
+      answers.map(a => `- **${a.question}**\n  ${a.answer}`).join("\n") + "\n";
+    nodeFs.writeFileSync(intakeAbs, old.includes(`跨项目问答回流（${reqId}）`)
+      ? old.replace(new RegExp(`\\n## 跨项目问答回流（${reqId}）[\\s\\S]*?(?=\\n## |\\s*$)`), section)
+      : old.replace(/\s*$/, "\n") + section);
+  }
+
+  await appendLog(reqId, "父Agent", `契约问答回流 → ${parentId}（${answers.length} 条）`);
+  return { ok: true, child: reqId, parent: parentId, file, intakeUpdated: nodeFs.existsSync(intakeAbs) };
+}
+
 // ---------- 斜杠命令全局外漏 ----------
 // 宿主 `/` 菜单的「提示词模板」只从两处读取：<工作区>/.pi/prompts 与 ~/.pi/agent/prompts，
 // 且**没有插件贡献点**（commands.register 只登记可执行命令，不能把 prompt 注入输入框）。
@@ -1835,6 +1975,61 @@ const TOOLS = [
       }
       return { ok: clean, reqId, clean, appended: clean ? 0 : items.length, items, file, next: clean ? "可以进入 /cr" : "实现补齐项后重跑 converge" };
     },
+  },
+  {
+    name: "dispatch_record",
+    description: "派发纪律物理化：记录一次角色派发，并校验模型绑定（docs/role-bindings.json）。父 Agent 越权自己干活、或擅自更换用户指定模型时，这里会返回 ok=false 并给出 hint。kind=progress 时只记一行进度（长跑任务每 10 分钟写一次，避免「跑了 40 分钟不知道是否卡住」）。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        role: { type: "string", description: "角色名，如 架构师CR / 开发工程师" },
+        task: { type: "string", description: "一句话任务或进度" },
+        model: { type: "string", description: "实际派发使用的模型；与绑定不一致会返回 ok=false" },
+        files: { type: "array", items: { type: "string" }, description: "白名单只读文件" },
+        kind: { type: "string", description: "dispatch（默认）/ progress" },
+      },
+      required: ["reqId", "role"],
+    },
+    execute: dispatchRecord,
+  },
+  {
+    name: "spec_merge",
+    description: "活规格合并：读取 requirements/<reqId>/spec-delta.md 的增量（### ADDED|MODIFIED|REMOVED <R-NN> 名称），合并进 specs/<capability>/spec.md。归档复盘时调用；按条目 ID 替换，天然幂等。dryRun=true 只看结果不写。",
+    risk: "medium",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "需求编号" },
+        capability: { type: "string", description: "能力名（小写连字符，如 coupon-issue）" },
+        dryRun: { type: "boolean", description: "只计算不落盘" },
+      },
+      required: ["reqId", "capability"],
+    },
+    execute: specMerge,
+  },
+  {
+    name: "answer_return",
+    description: "跨项目契约问答回流：在目标仓（派生需求所在仓）调用，把 [{question, answer}] 自动写回父仓 requirements/<父REQ>/derive/<子REQ>-answers.md 并回填父仓 01-intake，无需人工转发。",
+    risk: "medium",
+    schema: {
+      type: "object",
+      properties: {
+        reqId: { type: "string", description: "本仓的派生需求编号" },
+        answers: {
+          type: "array",
+          description: "问答列表",
+          items: {
+            type: "object",
+            properties: { question: { type: "string" }, answer: { type: "string" } },
+            required: ["question", "answer"],
+          },
+        },
+      },
+      required: ["reqId", "answers"],
+    },
+    execute: answerReturn,
   },
 ];
 

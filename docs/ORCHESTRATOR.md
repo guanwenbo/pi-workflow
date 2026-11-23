@@ -23,7 +23,9 @@
 2. **不得更换用户指定的模型**；角色→模型绑定见 `docs/roles/` 与配置，派发时按绑定执行
 3. 派发**只给现象与材料，不给主观结论**（bug 排查尤其：给日志、给现象，不猜根因）
 4. 每轮子代理返回前，必须把自己这轮的决策追加进 `log/YYYY-MM-DD.md`；父 Agent 校验「有产出无流水」即拒收
-5. 长跑任务每 10 分钟回写一行进度到 log，避免「跑了 40 分钟不知道是否卡住」
+5. 每次派发必须调 `dispatch_record`（role + task + model + 只读文件清单）：模型与 `docs/role-bindings.json` 不一致会被拒，从机制上挡住「擅自换模型」
+6. 长跑任务每 10 分钟调 `dispatch_record(kind=progress)` 回写一行进度，避免「跑了 40 分钟不知道是否卡住」
+7. 跨项目问答：目标仓答复后调 `answer_return`，自动写回父仓 `derive/<子REQ>-answers.md` 并回填 01-intake，不靠人转发
 
 ## 三、状态机
 
@@ -65,9 +67,9 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
 5. **`/cr` 之前必须 `converge`**：补齐遗漏后重跑，clean 才进 `/cr`
 6. 任何评审、打回、决策 → `log_append`，不写进主链路文档
 **门禁执行（插件物理化，gwb.pi-workflow-gates v0.4.0+ 可用时强制）**：插件工具 `plugin_gwb_pi_workflow_gates_*` 存在时——建档必须调 `req_init`；每条命令执行前必须调 `state_check`（ok=false 即停止并提示 hint；返回的 `warnings` 含跨项目依赖告警，须原样转达用户）；任何状态变更必须调 `state_transition`（非法流转会被物理拒绝，并自动镜像到跨项目注册中心）；`metrics` 的 CR 轮次/返工次数/人工打回原因必须调 `metrics_record`；依赖扫描必须调 `layer_scan`；变更编号必须调 `chg_next`。**跨项目依赖**：建立/解除依赖必须调 `registry_dep`（add/remove/list，双写注册中心与档案 frontmatter dependsOn）；跨项目全景必须调 `registry_list`；依赖只告警不阻塞，节奏由用户人工把控。**禁止手工编辑 `00-meta.md` 的 status / metrics / dependsOn**。插件不可用（工具不存在）时才允许按门禁表手工校验，且须在返回中声明「插件缺失，走手工兜底」。
-- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
+- **方案评审门禁（EP-03）**：`/design` 与 `/change` 产出方案文件（`03-design.md` / `changes/CHANGES.md`）后，父 Agent **必须先派发一轮架构师评审**（角色 架构师CR；模型取 `docs/role-bindings.json`，不在本文档硬编码），评审意见回写方案文件末尾「架构师评审意见」章节；评审未通过不得进入下一阶段（/review 评审、变更单批准）。同一方案最多复评 2 轮，未收敛上报用户决策。
 
-- **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR，模型 `custom/GPT-6-Sol-joybuilder`（首选，oxygen-gpt；不可用时回退 `custom/GPT-6-Astra-joybuilder`）），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。
+- **一致性 CR 门禁（EP-06）**：自测（预发/联调）全部完成后、执行 `/pre-release` 前，父 Agent 必须派发一轮**设计文档一致性评审**（角色 架构师CR；模型取 `docs/role-bindings.json`，不在本文档硬编码），以**最新代码实现**为基准逐条核对 `03-design.md` 及受影响的 `08-test-plan.md`/`09-release.md`/`DEPLOY-CONFIG.md`，把有出入处补齐/更正；评审意见回写设计文档末尾；未通过不得进入 `ready-release`（先修订文档再复评，最多 2 轮，未收敛上报用户决策）。
 
 - **代码评审门禁（EP-08）**：`/dev` 完成后、`/cr` 前，必须先过 `/code-review`（L1 机械层 → 端归属判定 → L2 多视角语义评审 → 验证轮），产出 `06a-code-review.md` 与 `reviews/issues.json`；`cr_gate` 未通过（含 R6 无用代码未删除）不得进入 `/cr`。**端归属（运营端/非运营端）不靠参数**：由评审员据入口/调用方/鉴权/页面来源等证据自行判定并出清单，人工可在中途给建议；判不准按非运营端从严；判为运营端时按分级豁免并发/幂等要求。
 
@@ -89,7 +91,7 @@ draft → clarifying → clarified → designing → reviewed → confirmed → 
   可读文件: ["03-design.md 或 changes/CHANGES.md", "docs/ARCHITECTURE.md", "docs/PROFILE.md", "方案涉及代码的现状文件"]
   产出文件: "<被评审方案文件>（末尾追加「架构师评审意见」章节）"
   返回格式: "结论(通过/不通过) + blocker/major/minor 计数 + 产出路径，≤200字"
-  模型: "custom/gpt-6-sol（HC-13）"
+  模型: "取 docs/role-bindings.json 中该角色的绑定"
 ```
 
 ## 六、返回协议（子 → 父）

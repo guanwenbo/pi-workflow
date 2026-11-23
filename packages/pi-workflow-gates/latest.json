@@ -1,10 +1,13 @@
 {
-  "version": "0.10.1",
-  "tag": "v0.10.1",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.10.1/gwb.pi-workflow-gates-0.10.1.piplug",
-  "publishedAt": "2026-11-23T07:44:00.791Z",
+  "version": "0.11.0",
+  "tag": "v0.11.0",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.11.0/gwb.pi-workflow-gates-0.11.0.piplug",
+  "publishedAt": "2026-11-24T02:00:00.000Z",
   "notes": [
-    "修复 trace_matrix 解析：任务编号只取 T-NN（不再把任务名当 ID）；AC 名称写在标题下一行也能读到",
-    "新增 test/lint.js 回归测试（坏文档 fixture 覆盖六类判据），并纳入发版前必跑"
+    "活规格：spec_merge 把需求增量并入 specs/<capability>/spec.md，归档不再「档案即沉没」",
+    "派发纪律物理化：dispatch_record 校验角色→模型绑定（docs/role-bindings.json），擅自换模型直接拒；progress 记录长跑进度",
+    "契约问答回流：answer_return 把目标仓答复自动写回父仓 derive/ 与 01-intake，不再人工转发",
+    "新增 /explore 只读探索命令：不建档案、不进状态机，先想清楚再立项",
+    "spec-delta 模板 + 粒度指引（≈500 行/会话、deferred-work、[P] 并行标记）"
   ]
 }

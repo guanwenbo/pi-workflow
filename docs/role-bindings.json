@@ -1,0 +1,10 @@
+{
+  "_说明": "角色 → 模型绑定。dispatch_record 会校验实际派发的模型是否与此一致；不一致需用户同意。换模型改这里，不改协议文档。",
+  "架构师CR": "custom/GPT-6-Sol-joybuilder",
+  "需求分析师": "custom/Claude-Sonnet-5.5-joybuilder",
+  "开发工程师": "custom/Claude-Sonnet-5.5-joybuilder",
+  "代码评审员": "custom/GPT-6-Astra-joybuilder",
+  "评审员": "custom/GPT-6-Sol-joybuilder",
+  "测试工程师": "custom/DeepSeek-V4.1-Flash-A-joybuilder",
+  "发布工程师": "custom/DeepSeek-V4.1-Flash-A-joybuilder"
+}

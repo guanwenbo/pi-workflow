@@ -46,7 +46,8 @@ change-requested：变更流程，审批通过后回流到对应阶段
 
 | 命令 | 阶段 | 角色 Agent | 核心产出 |
 |---|---|---|---|
-| `/req-new <需求名>` | 需求承接 | 父 Agent 自执行 | 00-meta.md、01-intake.md |
+| `/req-new <需求名> [T0-T4]` | 需求承接 | 父 Agent 自执行 | 00-meta.md（含 tier）、01-intake.md |
+| `/explore <想法>` | 探索（只读，不建档案） | 父 Agent 自执行 | 对话内一页结论：做不做/判级/第一步 |
 | `/req-adopt <目标仓路径>` | 接入（任意阶段前置） | 父 Agent 自执行 | 目标仓具备 `.pi/commands` + `docs/` + `requirements/` |
 | `/req-derive <本仓REQ> to <目标仓>` | 跨项目承接（派生） | 父 Agent 自执行 | 本仓 `derive/` 简报、目标仓 `.inbox/` 简报、父需求 dependsOn |
 | `/req-clarify` | 需求澄清 | 需求分析师 | 02-clarification.md（边界+AC） |
@@ -70,6 +71,9 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | `trace_matrix` | /breakdown 后、/cr 前 | AC → 任务 → 用例 → 证据 覆盖与缺口 |
 | `verify_record` | 每个任务完成时 | 落 evidence.json；「完成」以证据为准 |
 | `log_append` | 任意 | 过程流水 `log/YYYY-MM-DD.md`（只追加） |
+| `dispatch_record` | 每次派发 | 校验模型绑定、记录派发与长跑进度 |
+| `spec_merge` | /retro 归档 | 把 `spec-delta.md` 增量合并进 `specs/<capability>/spec.md` |
+| `answer_return` | 派生需求答复后 | 问答自动回传父仓，不再人工转发 |
 | `analyze` | /dev 之前 | 一致性闸：lint + 矩阵 + 产出齐全，只读 |
 | `converge` | /cr 之前 | 收敛闸：补遗漏项到 05-tasks |
 
@@ -100,7 +104,10 @@ change-requested：变更流程，审批通过后回流到对应阶段
 10. **完成以证据为准**：勾选任务前必须 `verify_record`；`converge` 对「勾选但无证据」直接报缺口
 11. **文档精简**：先结论后细节；一段 ≤3 句、一组列表 ≤7 项、不写套话；能用表格不用散文
 12. **代码精简**：先复用后新写；删优于加；不加没人要的抽象；非平凡逻辑必须带一个小测试
-13. **日志刚需**：关键路径带业务标识与 traceId、异常带栈、敏感脱敏；禁循环体逐条日志与大对象打印
+13. **活规格**：需求只写增量（spec-delta.md），归档时 `spec_merge` 并入 `specs/`；新需求读 specs 而不是考古旧档案
+14. **粒度**：一个任务 ≈ 一次会话（参考 ≤500 行、几个文件）；两个独立目标就拆；做不完的余量写 `deferred-work.md`，不静默膨胀
+15. **派发纪律**：每次派发调 `dispatch_record`，模型与 `docs/role-bindings.json` 不一致即被拒；长跑每 10 分钟记一次进度
+16. **日志刚需**：关键路径带业务标识与 traceId、异常带栈、敏感脱敏；禁循环体逐条日志与大对象打印
 
 ## 七、文件地图
 
@@ -121,5 +128,7 @@ packages/
 assets/                要复制进被评审项目根的资产（复制后成为项目的 rules/ 与 scripts/review/）
   rules/                 severity.json 严重度映射、semgrep/ 自有红线
   scripts/review/        run-l1.sh：diff 落盘 + 11 个工具 + status.json
-requirements/          需求档案存放区（每个需求含 log/ 过程流水）
+requirements/          需求档案存放区（每个需求含 log/ 过程流水、evidence.json、spec-delta.md）
+specs/                 活规格：系统当前行为，按能力组织（由 spec_merge 维护）
+docs/role-bindings.json 角色 → 模型绑定（换模型改这里，不改协议）
 ```

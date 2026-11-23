@@ -88,15 +88,18 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 17, "应注册 17 个工具");
-  ok("插件加载：17 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 20, "应注册 20 个工具");
+  ok("插件加载：20 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
   const gdir = path.join(HOME, ".pi", "agent", "prompts");
   const isManaged = f => fs.readFileSync(path.join(gdir, f), "utf8").includes("managed-by: gwb.pi-workflow-gates");
   const managed = fs.readdirSync(gdir).filter(f => f.endsWith(".md") && isManaged(f));
-  assert.strictEqual(managed.length, 14, "15 个命令中，除用户占用的 req-new 外应装 14 个");
+  // 命令总数跟着脚手架走，新增命令不必改测试
+  const scaffoldFiles = require("../scaffold.generated.js").files || [];
+  const cmdCount = scaffoldFiles.filter(f => f.startsWith(".pi/commands/") && f.endsWith(".md")).length;
+  assert.strictEqual(managed.length, cmdCount - 1, `${cmdCount} 个命令中，除用户占用的 req-new 外应装 ${cmdCount - 1} 个`);
   assert.strictEqual(fs.readFileSync(userOwned, "utf8"), userOwnedBody, "不得覆盖用户自己的同名模板");
   const tpl = fs.readFileSync(path.join(gdir, "req-derive.md"), "utf8");
   assert.match(tpl, /^---\ndescription: "/, "模板必须有 frontmatter description");
@@ -303,6 +306,42 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   const cv = await call("converge", { reqId: parentId, append: false });
   assert.ok(typeof cv.clean === "boolean");
   ok(`converge 可只读运行（clean=${cv.clean}）`);
+
+  // ---------- 9. 派发纪律 / 活规格 / 契约问答回流 ----------
+  console.log("\n[9] dispatch_record / spec_merge / answer_return");
+  fs.mkdirSync(path.join(PARENT, "docs"), { recursive: true });
+  fs.writeFileSync(path.join(PARENT, "docs", "role-bindings.json"),
+    JSON.stringify({ "架构师CR": "model-A" }));
+  const wrong = await call("dispatch_record", { reqId: parentId, role: "架构师CR", task: "方案评审", model: "model-B" });
+  assert.strictEqual(wrong.ok, false);
+  assert.match(wrong.hint, /不得更换模型/);
+  const right = await call("dispatch_record", { reqId: parentId, role: "架构师CR", task: "方案评审", model: "model-A" });
+  assert.strictEqual(right.ok, true);
+  const prog = await call("dispatch_record", { reqId: parentId, role: "开发工程师", task: "T-01 进行中 60%", kind: "progress" });
+  assert.strictEqual(prog.ok, true);
+  ok("派发纪律：擅自换模型被拒，绑定一致放行，进度可回写");
+
+  fs.writeFileSync(path.join(PARENT, "requirements", parentId, "spec-delta.md"),
+    "## 影响能力\n\ncoupon-issue\n\n### ADDED R-01 发券幂等\n\n- WHEN 同一 requestId 重复请求\n- THEN 只发一张券\n");
+  const sm1 = await call("spec_merge", { reqId: parentId, capability: "coupon-issue" });
+  assert.strictEqual(sm1.added, 1);
+  assert.match(fs.readFileSync(path.join(PARENT, "specs", "coupon-issue", "spec.md"), "utf8"), /R-01 发券幂等/);
+  const sm2 = await call("spec_merge", { reqId: parentId, capability: "coupon-issue" });
+  assert.strictEqual(sm2.modified, 1, "重复合并应按 ID 替换而不是重复追加");
+  ok("活规格：增量合并进 specs/，重复合并幂等");
+
+  if (d1 && d1.derivedReqId) {
+    WS = CHILD;
+    const ans = await call("answer_return", {
+      reqId: d1.derivedReqId,
+      answers: [{ question: "接口 QPS 上限是多少", answer: "峰值 200 QPS" }],
+    });
+    assert.strictEqual(ans.parent, parentId);
+    assert.ok(fs.existsSync(ans.file), "父仓应有问答回流文件");
+    assert.match(fs.readFileSync(ans.file, "utf8"), /峰值 200 QPS/);
+    WS = PARENT;
+    ok("契约问答回流：目标仓答复自动写回父仓 derive/");
+  }
 
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {

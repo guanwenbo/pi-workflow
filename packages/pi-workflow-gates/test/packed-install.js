@@ -71,13 +71,16 @@ global.pi = {
   console.log("[1] 从分发副本加载插件（模拟 .piplug 安装）");
   const plugin = require(path.join(PLUGIN_DIR, "main.js"));
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 17, "应注册 17 个工具");
-  ok("插件在无仓库环境下正常加载，17 个工具注册完成");
+  assert.strictEqual(Object.keys(TOOLS).length, 20, "应注册 20 个工具");
+  ok("插件在无仓库环境下正常加载，20 个工具注册完成");
 
   // ---------- 2. 斜杠命令来自内嵌脚手架 ----------
   const pdir = path.join(HOME, ".pi", "agent", "prompts");
   const templates = fs.readdirSync(pdir).filter(f => f.endsWith(".md"));
-  assert.strictEqual(templates.length, 15, `应安装 15 个斜杠命令，实际 ${templates.length}`);
+  // 命令数跟着内嵌脚手架走，新增命令不必改测试
+  const cmdCount = (require(path.join(PLUGIN_DIR, "scaffold.generated.js")).files || [])
+    .filter(f => f.startsWith(".pi/commands/") && f.endsWith(".md")).length;
+  assert.strictEqual(templates.length, cmdCount, `应安装 ${cmdCount} 个斜杠命令，实际 ${templates.length}`);
   const tpl = fs.readFileSync(path.join(pdir, "req-adopt.md"), "utf8");
   assert.match(tpl, /managed-by: gwb\.pi-workflow-gates/);
   assert.match(tpl, /plugin-version: "/);
