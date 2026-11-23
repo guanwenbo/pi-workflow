@@ -2,7 +2,7 @@
   "version": "0.15.0",
   "tag": "v0.15.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.15.0/gwb.pi-workflow-gates-0.15.0.piplug",
-  "publishedAt": "2026-11-24T07:00:00.000Z",
+  "publishedAt": "2026-11-23T10:13:22.529Z",
   "notes": [
     "接入 Jev 判定能力（可选）：判级、模糊判据复核、争议定级、打回原因归类；未配置 Jev 则完全按原流程",
     "design_lint 新增 needsJudge：把机器判不准的语义项（自造词、段落冗余）整理成可直接喂 JevClassify 的问题",
