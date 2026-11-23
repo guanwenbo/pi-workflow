@@ -2,7 +2,7 @@
   "version": "0.14.0",
   "tag": "v0.14.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.14.0/gwb.pi-workflow-gates-0.14.0.piplug",
-  "publishedAt": "2026-11-24T06:00:00.000Z",
+  "publishedAt": "2026-11-23T10:10:05.657Z",
   "notes": [
     "修复「发版后不提示更新」：检查节流由 24 小时改为 30 分钟，周期检查由 4 小时改为 1 小时（最坏 1.5 小时内可见提示）",
     "新增磁盘/内存版本比对：磁盘已更新但内存仍是旧版时，明确提示「重启 App 或 Reload 后生效」，不再静默"
