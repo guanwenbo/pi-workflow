@@ -1,15 +1,10 @@
 {
-  "version": "0.10.0",
-  "tag": "v0.10.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.10.0/gwb.pi-workflow-gates-0.10.0.piplug",
-  "publishedAt": "2026-11-23T07:42:45.639Z",
+  "version": "0.10.1",
+  "tag": "v0.10.1",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.10.1/gwb.pi-workflow-gates-0.10.1.piplug",
+  "publishedAt": "2026-11-23T10:40:00.000Z",
   "notes": [
-    "体量分级 T0-T4：req_init 收 tier，状态机与命令按级别物理裁剪（小 bug 不再跑 15 态全量）",
-    "design_lint：七部分/术语表/调用链路八列/复用论证/编号带名/主链路禁过程/精简/日志，默认 warn 可切 block",
-    "trace_matrix：AC→任务→用例→证据 覆盖矩阵与缺口",
-    "verify_record + evidence.json：完成以证据为准；log_append + log/YYYY-MM-DD.md：过程流水与主链路分离",
-    "analyze（dev 前）/ converge（cr 前）两道一致性闸",
-    "metrics_record 增加打回原因分类（rework_reason）",
-    "模板同步：00-meta tier、02-clarification AC 带名、03-design 术语表/调用链路/复用论证并移除评审意见附节、05-tasks 覆盖AC 与 verify 列"
+    "修复 trace_matrix 解析：任务编号只取 T-NN（不再把任务名当 ID）；AC 名称写在标题下一行也能读到",
+    "新增 test/lint.js 回归测试（坏文档 fixture 覆盖六类判据），并纳入发版前必跑"
   ]
 }

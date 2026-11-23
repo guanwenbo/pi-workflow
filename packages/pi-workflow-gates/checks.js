@@ -234,15 +234,25 @@ async function traceMatrix(reqId) {
 
   // AC：### AC-01 名称  或  ### AC-01
   const acs = [];
-  for (const line of clarify.split("\n")) {
+  const lines = clarify.split("\n");
+  lines.forEach((line, i) => {
     const m = line.match(/^###+\s*(AC-\d+)\s*(.*)$/);
-    if (m) acs.push({ id: m[1], name: (m[2] || "").replace(/^[：:\s]+/, "").trim() });
-  }
+    if (!m) return;
+    let name = (m[2] || "").replace(/^[：:\s]+/, "").trim();
+    // 名称常写在标题下一行，标题为空时往下找第一条非空文本
+    if (!name) {
+      for (let j = i + 1; j < lines.length && j < i + 4; j++) {
+        const t = lines[j].trim();
+        if (t && !t.startsWith("#") && !t.startsWith("<!--")) { name = t.slice(0, 30); break; }
+      }
+    }
+    acs.push({ id: m[1], name });
+  });
 
   const taskRows = (table(tasksDoc, ["任务编号", "任务"]) || { rows: [] }).rows
     .filter(r => !isEmptyCell(r["任务编号"]))
     .map(r => ({
-      id: r["任务编号"] || "",
+      id: ((r["任务编号"] || "").match(/\bT-\d+\b/) || [r["任务编号"] || ""])[0],
       name: r["任务"] || "",
       covers: parseIds(r[findKey(r, "覆盖") || "covers"] || r["覆盖AC"] || ""),
       verify: r[findKey(r, "verify") || findKey(r, "验证") || ""] || "",
