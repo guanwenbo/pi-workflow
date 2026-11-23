@@ -2,7 +2,7 @@
   "version": "0.12.0",
   "tag": "v0.12.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.12.0/gwb.pi-workflow-gates-0.12.0.piplug",
-  "publishedAt": "2026-11-24T03:00:00.000Z",
+  "publishedAt": "2026-11-23T09:27:54.272Z",
   "notes": [
     "把 8 个命令模板接上新门禁（此前工具存在但命令不调用，等于没生效）：design/review/dev/cr/test-plan/retro/req-new/change",
     "提交时机写进命令：任务级本地 commit 允许，push/PR 必须等 cr-confirmed",
