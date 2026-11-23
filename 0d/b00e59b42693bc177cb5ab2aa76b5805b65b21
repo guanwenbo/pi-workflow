@@ -1,0 +1,30 @@
+.pi/commands/cr.md
+  h_b98c004121ae66 9-12
+.pi/commands/design.md
+  h_b98c004121ae66 9-12
+.pi/commands/req-new.md
+  h_b98c004121ae66 9-12
+.pi/commands/retro.md
+  h_b98c004121ae66 9-12
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 28
+docs/WORKFLOW.md
+  h_b98c004121ae66 93-106
+packages/pi-workflow-gates/checks.js
+  h_b98c004121ae66 118-119,149-155,208-212,239-240
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-9
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0db00e59b42693bc177cb5ab2aa76b5805b65b21",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
