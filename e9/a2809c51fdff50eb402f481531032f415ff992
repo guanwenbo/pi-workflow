@@ -1,0 +1,14 @@
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e9a2809c51fdff50eb402f481531032f415ff992",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
