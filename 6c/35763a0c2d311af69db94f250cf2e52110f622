@@ -1,0 +1,30 @@
+docs/ORCHESTRATOR.md
+  h_b98c004121ae66 20-23
+docs/WORKFLOW.md
+  h_b98c004121ae66 75-76
+packages/pi-workflow-gates/checks.js
+  h_b98c004121ae66 37-45,366
+packages/pi-workflow-gates/latest.json
+  h_b98c004121ae66 2-5,7-11
+packages/pi-workflow-gates/main.js
+  h_b98c004121ae66 906-911,913-920,1272-1337,1381-1385,1830-1839,1852,1868,1876,2209-2211,2218-2229,2231-2236,2238,2324-2333
+packages/pi-workflow-gates/manifest.json
+  h_b98c004121ae66 5-6
+packages/pi-workflow-gates/test/contract.js
+  h_b98c004121ae66 41-43
+packages/pi-workflow-gates/test/packed-install.js
+  h_b98c004121ae66 74-75
+packages/pi-workflow-gates/test/smoke.js
+  h_b98c004121ae66 91-92,386-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6c35763a0c2d311af69db94f250cf2e52110f622",
+  "prompts": {},
+  "humans": {
+    "h_b98c004121ae66": {
+      "author": "gwbgwb <guanwenbo@jd.com>"
+    }
+  }
+}
