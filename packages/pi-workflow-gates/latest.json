@@ -2,7 +2,7 @@
   "version": "0.16.0",
   "tag": "v0.16.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.16.0/gwb.pi-workflow-gates-0.16.0.piplug",
-  "publishedAt": "2026-11-24T08:00:00.000Z",
+  "publishedAt": "2026-11-27T02:16:50.101Z",
   "notes": [
     "新增命令契约测试（docs-as-tests）：命令必须调用指定工具、不得引用不存在的工具、禁语、体积上限；发版必跑",
     "幂等：verify_record / log_append 重复上报自动去重",
