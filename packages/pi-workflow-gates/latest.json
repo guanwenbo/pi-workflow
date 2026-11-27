@@ -2,7 +2,7 @@
   "version": "0.17.0",
   "tag": "v0.17.0",
   "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.17.0/gwb.pi-workflow-gates-0.17.0.piplug",
-  "publishedAt": "2026-11-24T09:00:00.000Z",
+  "publishedAt": "2026-11-27T02:25:06.602Z",
   "notes": [
     "新增 resume_hint：接手先问路——按状态与产出算出下一步命令与缺口，换会话不再凭记忆跳步",
     "三写有序 + 可修：日志→镜像→00-meta，镜像失败入重试队列而不是静默不同步",
