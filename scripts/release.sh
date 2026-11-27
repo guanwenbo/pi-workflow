@@ -45,6 +45,7 @@ node "$ROOT/scripts/build-scaffold.js" --check || node "$ROOT/scripts/build-scaf
 node "$PKG/test/smoke.js" >/dev/null
 node "$PKG/test/packed-install.js" >/dev/null
 node "$PKG/test/lint.js" >/dev/null
+node "$PKG/test/contract.js" >/dev/null
 echo "✓ 测试通过"
 
 if [ "$DRY" = "1" ]; then

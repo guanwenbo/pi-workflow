@@ -88,8 +88,8 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 21, "应注册 21 个工具");
-  ok("插件加载：21 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 22, "应注册 22 个工具");
+  ok("插件加载：22 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
@@ -352,6 +352,36 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   assert.strictEqual(rt.reasons[0].reason, "自造词");
   assert.ok(rt.reasons[0].count >= 2, `应聚合到至少 2 次，实际 ${rt.reasons[0].count}`);
   ok(`打回原因聚合：TOP1「${rt.reasons[0].reason}」${rt.reasons[0].count} 次`);
+
+  // ---------- 11. 幂等与并发 ----------
+  console.log("\n[11] 幂等 / 乐观并发 / 重试队列");
+  await call("verify_record", { reqId: parentId, task: "T-02", command: "mvn test", exitCode: 0 });
+  const dup = await call("verify_record", { reqId: parentId, task: "T-02", command: "mvn test", exitCode: 0 });
+  assert.strictEqual(dup.already, true, "同任务同命令同结果应幂等");
+  const ev2 = JSON.parse(fs.readFileSync(path.join(PARENT, "requirements", parentId, "evidence.json"), "utf8"));
+  assert.strictEqual(ev2.filter(e => e.task === "T-02").length, 1, "证据不得重复堆叠");
+  ok("verify_record 幂等：重复上报只留一条");
+
+  const l1 = await call("log_append", { reqId: parentId, role: "开发", text: "T-02 完成" });
+  const l2 = await call("log_append", { reqId: parentId, role: "开发", text: "T-02 完成" });
+  assert.strictEqual(l2.already, true, "当天同角色同内容应幂等");
+  ok("log_append 幂等：不会把同一句话写两遍");
+
+  // 乐观并发：用错误的 baseRev 写回必须被拒
+  const metaNow = fs.readFileSync(path.join(PARENT, "requirements", parentId, "00-meta.md"), "utf8");
+  const realRev = require("../main.js").__test.fmRev(metaNow);
+  await assert.rejects(
+    () => require("../main.js").__test.writeMetaChecked(parentId, metaNow, realRev + 99),
+    /并发冲突/
+  );
+  await require("../main.js").__test.writeMetaChecked(parentId, metaNow, realRev); // 正确 rev 放行
+  const bumped = fs.readFileSync(path.join(PARENT, "requirements", parentId, "00-meta.md"), "utf8");
+  assert.strictEqual(plugin.__test.fmRev(bumped), realRev + 1);
+  ok("乐观并发：rev 不符拒写，相符则 rev+1");
+
+  const pe = await call("pending_effects", {});
+  assert.strictEqual(typeof pe.pending, "number");
+  ok(`重试队列可查询（当前待重试 ${pe.pending} 项）`);
 
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {

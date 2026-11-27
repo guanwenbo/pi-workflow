@@ -2,6 +2,7 @@
 id: REQ-YYYYMMDD-<slug>
 title: <需求标题>
 status: draft
+rev: 1            # 乐观并发版本号：每次写回自增，并发冲突时拒写
 tier: T2          # T0 Bug修复 / T1 小型 / T2 中型 / T3 大型 / T4 新项目；决定必须产出哪些文档
 dependsOn: []
 priority: <P0|P1|P2|P3>

@@ -6,6 +6,12 @@ description: 需求澄清：派发需求分析师生成澄清问题清单，确�
 
 参数：`REQ-YYYYMMDD-<slug>`（必填）
 
+## 机械门禁
+
+1. `state_check {reqId, command:"req-clarify"}`：ok=false 立即停止，按 hint 提示用户（分级会裁剪：T0 不走本命令）
+2. 派发需求分析师前调 `dispatch_record`（role、task、model），模型须与 `docs/role-bindings.json` 一致
+3. 澄清产出后把「问了什么、用户怎么定」记 `log_append`；AC 写进 02-clarification 并带人话名称
+
 ## 前置校验
 
 1. 读取 `requirements/REQ-YYYYMMDD-<slug>/00-meta.md`，校验 `status` 字段。

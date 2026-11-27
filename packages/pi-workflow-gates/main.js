@@ -119,6 +119,27 @@ function putFrontmatter(content, key, value) {
   return content.replace(/^---\n/, `---\n${key}: ${value}\n`);
 }
 
+/** 乐观并发的版本号：老档案没有 rev 视为 0 */
+function fmRev(content) {
+  const v = parseInt(fmField(content, "rev") || "0", 10);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * 带并发校验的写回：先重读一次比对 rev，不一致说明有人抢先改了。
+ * 为什么需要：state_transition 与 metrics_record 都是「读-改-写」，
+ * 两个会话/窗口同时操作会静默覆盖，档案与看板就长期不一致。
+ */
+async function writeMetaChecked(reqId, content, baseRev) {
+  const fresh = await readMeta(reqId);
+  const now = fmRev(fresh);
+  if (now !== baseRev) {
+    throw new Error(`并发冲突：${reqId} 已被其他会话修改（rev ${baseRev} → ${now}），请重新读取后再操作`);
+  }
+  await pi.fs.writeText(metaPath(reqId), putFrontmatter(content, "rev", String(baseRev + 1)));
+  return baseRev + 1;
+}
+
 /** 过程流水：requirements/<REQ>/log/YYYY-MM-DD.md，只追加。
  *  为什么单独一条流：主链路文档只留最终结论，追溯「谁在第几轮因为什么被否」靠这里。 */
 async function appendLog(reqId, role, text) {
@@ -791,7 +812,7 @@ async function reqInit(args) {
     .replaceAll("<负责人>", args.owner || "待填写")
     .replaceAll("YYYY-MM-DD", d);
 
-  await pi.fs.writeText(`${dir}/00-meta.md`, putFrontmatter(meta, "tier", tier));
+  await pi.fs.writeText(`${dir}/00-meta.md`, putFrontmatter(putFrontmatter(meta, "tier", tier), "rev", "1"));
   await pi.fs.writeText(`${dir}/01-intake.md`, intakeTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
   await pi.fs.writeText(`${dir}/SUMMARY.md`, summaryTpl.replaceAll("REQ-YYYYMMDD-<slug>", reqId).replaceAll("<需求标题>", title));
 
@@ -850,6 +871,7 @@ async function stateTransition(args) {
   if (SIDE_STATES.includes(to) && !note) throw new Error(`进入 ${to} 必须在 note 中写明原因`);
 
   let content = await readMeta(reqId);
+  const baseRev = fmRev(content);
   const from = parseStatus(content);
   const tier = tierOf(content);
   // 级别自带流转表时以它为准（T0/T1 的合法路径比主干短）
@@ -881,7 +903,7 @@ async function stateTransition(args) {
   content = setFrontmatter(content, "status", to);
   content = setFrontmatter(content, "updated", today());
   content = appendStatusLog(content, from, to, note);
-  await pi.fs.writeText(metaPath(reqId), content);
+  await writeMetaChecked(reqId, content, baseRev);
   await registryMirrorStatus(reqId, to); // 镜像到注册中心（跨项目视图）
   await appendLog(reqId, "父Agent", `${from} → ${to}${note ? `｜${note}` : ""}`);
   return { ok: true, reqId, from, to, tier, updated: today() };
@@ -1030,6 +1052,7 @@ async function metricsRecord(args) {
   if (kind === "human_reject" && !note) throw new Error("human_reject 必须在 note 中写明打回原因");
 
   let content = await readMeta(reqId);
+  const baseRev = fmRev(content);
   let result;
 
   if (kind === "cr_round") {
@@ -1053,7 +1076,7 @@ async function metricsRecord(args) {
     throw new Error(`非法 kind：${kind}（可选：cr_round / rework / human_reject）`);
   }
 
-  await pi.fs.writeText(metaPath(reqId), content);
+  await writeMetaChecked(reqId, content, baseRev);
   await appendLog(reqId, "父Agent", `metrics ${kind}${reason ? `（${reason}）` : ""}${note ? `：${note}` : ""}`);
   return { ok: true, reqId, ...result };
 }
@@ -1168,7 +1191,13 @@ async function answerReturn(args) {
 
   const rel = nodePath.join("requirements", parentId, "derive");
   const absDir = nodePath.join(parentRoot, rel);
-  nodeFs.mkdirSync(absDir, { recursive: true });
+  try {
+    nodeFs.mkdirSync(absDir, { recursive: true });
+  } catch (e) {
+    // 父仓当前不可写：入队等下次插件加载重试，同时明确告诉调用方没同步成功
+    const queued = await enqueueEffect("answer_return", { reqId, answers }, e.message);
+    return { ok: false, queued: true, child: reqId, parent: parentId, error: `父仓不可写（${e.message}），已入重试队列`, due: queued.due };
+  }
   const file = nodePath.join(absDir, `${reqId}-answers.md`);
 
   // 幂等：同一问题重复回答只保留最新
@@ -1227,6 +1256,67 @@ async function reworkTop(args) {
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
   return { ok: true, total, reasons, hint: reasons.length ? `最高频打回原因：${reasons[0].reason}（${reasons[0].count} 次）——模板或画像该改这里` : "暂无打回记录" };
+}
+
+// ---------- 跨仓写：失败重试队列 ----------
+// 为什么需要：req_derive 投简报、answer_return 回父仓都要写「别的仓库」，
+// 对端目录不可达（没挂载/权限/临时故障）时旧实现直接失败即丢，用户以为已经同步了。
+
+async function effectsPath() {
+  const dir = await pi.plugin.getDataPath();
+  return nodePath.join(dir, "pending-effects.json");
+}
+
+async function readEffects() {
+  try { return JSON.parse(nodeFs.readFileSync(await effectsPath(), "utf8")) || []; } catch { return []; }
+}
+
+async function writeEffects(list) {
+  const file = await effectsPath();
+  nodeFs.mkdirSync(nodePath.dirname(file), { recursive: true });
+  nodeFs.writeFileSync(file, JSON.stringify(list, null, 2));
+}
+
+/** 入队（按 kind+参数去重，保留原队列位置） */
+async function enqueueEffect(kind, args, error) {
+  const list = await readEffects();
+  const key = `${kind}:${JSON.stringify(args || {})}`;
+  const hit = list.find(e => e.key === key);
+  const attempts = (hit ? hit.attempts : 0) + 1;
+  const entry = {
+    key, kind, args,
+    attempts,
+    // 退避：1min * 2^(attempts-1)，封顶 6 小时
+    due: new Date(Date.now() + Math.min(6 * 3600e3, 60e3 * Math.pow(2, Math.min(attempts - 1, 12)))).toISOString(),
+    lastError: String(error || "").slice(0, 300),
+    at: nowMinute(),
+  };
+  if (hit) Object.assign(hit, entry);
+  else list.push(entry);
+  await writeEffects(list);
+  return entry;
+}
+
+/** 执行队列里到期项；handler 只可能是幂等操作 */
+async function retryEffects() {
+  const list = await readEffects();
+  if (!list.length) return { ok: true, total: 0, retried: 0, failed: 0 };
+  const handlers = { answer_return: answerReturn, req_derive: reqDerive };
+  const now = Date.now();
+  let retried = 0, failed = 0;
+  const keep = [];
+  for (const e of list) {
+    const fn = handlers[e.kind];
+    if (!fn || Date.parse(e.due) > now) { keep.push(e); continue; }
+    try { await fn(e.args); retried += 1; }
+    catch (err) {
+      failed += 1;
+      const attempts = (e.attempts || 0) + 1;
+      keep.push({ ...e, attempts, due: new Date(now + Math.min(6 * 3600e3, 60e3 * Math.pow(2, Math.min(attempts - 1, 12)))).toISOString(), lastError: String(err.message || err).slice(0, 300) });
+    }
+  }
+  await writeEffects(keep);
+  return { ok: failed === 0, total: list.length, retried, failed, pending: keep.length };
 }
 
 // ---------- 斜杠命令全局外漏 ----------
@@ -1936,6 +2026,11 @@ const TOOLS = [
         task, command, exitCode: Number(exitCode), pass: Number(exitCode) === 0,
         output: String(output).split("\n").slice(0, 5).join("\n"), at: nowMinute(), by: "agent",
       };
+      // 幂等：同任务同命令同结果重复上报，只保留一条（避免证据文件被重复调用撑大）
+      const dup = list.find(e => e.task === task && e.command === command && e.pass === entry.pass);
+      if (dup) {
+        return { ok: true, reqId, task, pass: dup.pass, already: true, total: list.length, file };
+      }
       list.push(entry);
       await pi.fs.writeText(file, JSON.stringify(list, null, 2));
       await appendLog(reqId, "开发", `${task} verify: ${command} → ${entry.pass ? "通过" : `失败(${exitCode})`}`);
@@ -1959,6 +2054,13 @@ const TOOLS = [
       const { reqId, role, text } = args || {};
       if (!reqId || !role || !text) throw new Error("缺少必填参数：reqId / role / text");
       await readMeta(reqId); // 档案不存在时直接报错，避免写散落目录
+      // 幂等：当天同角色同内容重复写只保留一条（agent 重试不该制造重复流水）
+      try {
+        const today0 = await pi.fs.readText(`requirements/${reqId}/log/${today()}.md`);
+        if (today0.includes(`[${role}] ${text}`)) {
+          return { ok: true, reqId, role, already: true, file: `requirements/${reqId}/log/${today()}.md` };
+        }
+      } catch { /* 当天还没有流水文件，正常写 */ }
       const file = await appendLog(reqId, role, text);
       return { ok: true, reqId, file };
     },
@@ -2099,6 +2201,24 @@ const TOOLS = [
     },
     execute: reworkTop,
   },
+  {
+    name: "pending_effects",
+    description: "跨仓写重试队列：列出/重试/清空「父仓暂不可写」等失败项（answer_return、req_derive）。加载时会自动重试到期项；retry=true 立即重试，clear=true 清空队列。",
+    risk: "medium",
+    schema: {
+      type: "object",
+      properties: {
+        retry: { type: "boolean", description: "立即重试到期项" },
+        clear: { type: "boolean", description: "清空队列（确认放弃后使用）" },
+      },
+    },
+    execute: async args => {
+      const { retry, clear } = args || {};
+      if (clear) { await writeEffects([]); return { ok: true, cleared: true, pending: 0 }; }
+      const res = retry ? await retryEffects() : { ok: true, pending: (await readEffects()).length };
+      return { ...res, items: (await readEffects()).map(e => ({ kind: e.kind, attempts: e.attempts, due: e.due, lastError: e.lastError, args: e.args })) };
+    },
+  },
 ];
 
 const DASHBOARD_COMMAND = "gwb.pi-workflow-gates.dashboard";
@@ -2141,6 +2261,8 @@ async function onLoad() {
     updateStatePathCache = nodePath.join(dataPath, "update-check.json");
   } catch { /* 拿不到就只联网检查、不落状态 */ }
   await autoCheckUpdate();
+  // 上次加载期间父仓不可写的跨仓写入，这里补一次（失败只记状态，不打扰）
+  retryEffects().catch(() => {});
   // 宿主会用它内存里的旧记录回写 registry.json（实测启动后约 30s 覆盖一次），
   // 所以延迟几秒再矫正版本号，否则立刻写会被它盖掉。
   const regSyncTimer = setTimeout(() => {
@@ -2180,4 +2302,4 @@ async function onPanelInvoke(channel, payload) {
   throw new Error(`unknown panel channel: ${channel}`);
 }
 
-module.exports = { __test: { syncHostRegistry, extractZip, applyUpdate }, onLoad, onUnload, onPanelInvoke };
+module.exports = { __test: { syncHostRegistry, extractZip, applyUpdate, writeMetaChecked, fmRev, readEffects, enqueueEffect }, onLoad, onUnload, onPanelInvoke };

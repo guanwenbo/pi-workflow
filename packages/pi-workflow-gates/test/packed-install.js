@@ -71,8 +71,8 @@ global.pi = {
   console.log("[1] 从分发副本加载插件（模拟 .piplug 安装）");
   const plugin = require(path.join(PLUGIN_DIR, "main.js"));
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 21, "应注册 21 个工具");
-  ok("插件在无仓库环境下正常加载，21 个工具注册完成");
+  assert.strictEqual(Object.keys(TOOLS).length, 22, "应注册 22 个工具");
+  ok("插件在无仓库环境下正常加载，22 个工具注册完成");
 
   // ---------- 2. 斜杠命令来自内嵌脚手架 ----------
   const pdir = path.join(HOME, ".pi", "agent", "prompts");

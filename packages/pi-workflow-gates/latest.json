@@ -1,11 +1,13 @@
 {
-  "version": "0.15.0",
-  "tag": "v0.15.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.15.0/gwb.pi-workflow-gates-0.15.0.piplug",
-  "publishedAt": "2026-11-23T10:13:22.529Z",
+  "version": "0.16.0",
+  "tag": "v0.16.0",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.16.0/gwb.pi-workflow-gates-0.16.0.piplug",
+  "publishedAt": "2026-11-24T08:00:00.000Z",
   "notes": [
-    "接入 Jev 判定能力（可选）：判级、模糊判据复核、争议定级、打回原因归类；未配置 Jev 则完全按原流程",
-    "design_lint 新增 needsJudge：把机器判不准的语义项（自造词、段落冗余）整理成可直接喂 JevClassify 的问题",
-    "门禁判据不变：Jev 只做判定，不影响机械门禁，结论一律落档案或 log"
+    "新增命令契约测试（docs-as-tests）：命令必须调用指定工具、不得引用不存在的工具、禁语、体积上限；发版必跑",
+    "幂等：verify_record / log_append 重复上报自动去重",
+    "乐观并发：00-meta 增加 rev，写回前校验，被别的会话抢先改过则拒写",
+    "跨仓写失败重试队列：answer_return 等写父仓失败不再丢，落队列并退避重试（加载时自动重跑）",
+    "契约测试首次运行即抓出 /req-clarify 未调 state_check、explore 使用禁语「大概」两处真实缺陷"
   ]
 }
