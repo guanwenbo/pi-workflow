@@ -1,13 +1,13 @@
 {
-  "version": "0.16.0",
-  "tag": "v0.16.0",
-  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.16.0/gwb.pi-workflow-gates-0.16.0.piplug",
-  "publishedAt": "2026-11-27T02:16:50.101Z",
+  "version": "0.17.0",
+  "tag": "v0.17.0",
+  "downloadUrl": "https://github.com/guanwenbo/pi-workflow/releases/download/v0.17.0/gwb.pi-workflow-gates-0.17.0.piplug",
+  "publishedAt": "2026-11-24T09:00:00.000Z",
   "notes": [
-    "新增命令契约测试（docs-as-tests）：命令必须调用指定工具、不得引用不存在的工具、禁语、体积上限；发版必跑",
-    "幂等：verify_record / log_append 重复上报自动去重",
-    "乐观并发：00-meta 增加 rev，写回前校验，被别的会话抢先改过则拒写",
-    "跨仓写失败重试队列：answer_return 等写父仓失败不再丢，落队列并退避重试（加载时自动重跑）",
-    "契约测试首次运行即抓出 /req-clarify 未调 state_check、explore 使用禁语「大概」两处真实缺陷"
+    "新增 resume_hint：接手先问路——按状态与产出算出下一步命令与缺口，换会话不再凭记忆跳步",
+    "三写有序 + 可修：日志→镜像→00-meta，镜像失败入重试队列而不是静默不同步",
+    "converge 逐条独立：已存在的补齐项标记「已存在，跳过」，一条失败不影响其余",
+    "阈值集中到 LIMITS（段落/列表/文档行数/命令体积），文档与测试共用",
+    "通知抑制：同一条提示 10 分钟内不重复弹"
   ]
 }

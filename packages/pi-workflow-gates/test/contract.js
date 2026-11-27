@@ -38,8 +38,9 @@ const EXTERNAL_TOOLS = new Set(["cr_gate", "cr_begin", "cr_ingest", "cr_report",
 // 禁语：流程文档不该出现的模糊表述（会让 agent 自己发挥）
 const BANNED = ["大概", "应该是没问题", "你懂的", "随便", "自己看着办"];
 
-// 单命令模板体积上限（超了说明塞了太多背景，规则会被淹没）
-const MAX_BYTES = 12000;
+// 体积上限从 checks 的 LIMITS 取，避免阈值散落两处
+const { LIMITS } = require("../checks.js");
+const MAX_BYTES = LIMITS.commandMaxBytes;
 
 let passed = 0;
 const ok = m => { passed++; console.log("  ✔ " + m); };

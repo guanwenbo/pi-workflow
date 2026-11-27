@@ -88,8 +88,8 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
 
   const plugin = require("../main.js");
   await plugin.onLoad();
-  assert.strictEqual(Object.keys(TOOLS).length, 22, "应注册 22 个工具");
-  ok("插件加载：22 个工具全部注册");
+  assert.strictEqual(Object.keys(TOOLS).length, 23, "应注册 23 个工具");
+  ok("插件加载：23 个工具全部注册");
 
 
   // 斜杠命令：插件加载即全局安装（用户级目录），不依赖任何仓库内文件
@@ -382,6 +382,27 @@ const ok = msg => { passed++; console.log("  ✔ " + msg); };
   const pe = await call("pending_effects", {});
   assert.strictEqual(typeof pe.pending, "number");
   ok(`重试队列可查询（当前待重试 ${pe.pending} 项）`);
+
+  // ---------- 12. resume_hint / converge 逐条 ----------
+  console.log("\n[12] resume_hint / converge 逐条结果");
+  const hint = await call("resume_hint", { reqId: parentId });
+  assert.ok(hint.status, "应返回当前状态");
+  assert.ok(hint.next && hint.next.command, "应给出下一步命令");
+  ok(`resume_hint：${hint.status} → ${hint.next.command}`);
+
+  const all = await call("resume_hint", {});
+  assert.ok(Array.isArray(all.items) && all.items.length >= 1, "不传 reqId 应列出全部需求");
+  ok(`resume_hint 列表模式返回 ${all.items.length} 条`);
+
+  const cv1 = await call("converge", { reqId: parentId });
+  assert.ok(Array.isArray(cv1.items), "converge 应逐条返回");
+  const cv2 = await call("converge", { reqId: parentId });
+  if (cv1.items.length) {
+    assert.ok(cv2.items.every(i => i.status === "已存在，跳过"), "重复 converge 不应重复追加");
+    ok("converge 逐条：重复项标记「已存在，跳过」");
+  } else {
+    ok("converge 逐条：本轮无缺口");
+  }
 
   console.log(`\n全部通过：${passed} 项断言组，临时目录 ${TMP}`);
 })().catch(err => {

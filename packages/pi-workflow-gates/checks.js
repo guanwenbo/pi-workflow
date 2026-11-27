@@ -34,7 +34,15 @@ const COMMON_TERMS = new Set([
   "业务模块", "基础模块", "核心模块", "业务平台", "数据平台", "技术平台", "业务域", "数据域",
 ]);
 
-const LIMITS = { paragraphSentences: 3, listItems: 7, designLines: 420 };
+// 全部阈值集中一处：文档、模板、测试都读它，改数字只改这里
+const LIMITS = {
+  paragraphSentences: 3,   // 一段最多 3 句
+  listItems: 7,            // 一组列表最多 7 项
+  designLines: 420,        // 单份设计文档参考行数
+  commandMaxBytes: 12000,  // 单条命令模板体积上限
+  taskLinesHint: 500,      // 一个任务 ≈ 一次会话的改动行数（写进文档，不机检）
+  summaryLines: 5,         // SUMMARY 每阶段行数
+};
 
 // ---------- 通用解析 ----------
 
@@ -355,4 +363,4 @@ function parseIds(text) {
   return [...new Set(String(text || "").match(/\b(?:AC|TC)-\d+\b/g) || [])];
 }
 
-module.exports = { designLint, traceMatrix, evidenceOf, dispatchOf, readDoc, frontmatter, sectionBody, hasSection, table, DOC };
+module.exports = { LIMITS, designLint, traceMatrix, evidenceOf, dispatchOf, readDoc, frontmatter, sectionBody, hasSection, table, DOC };

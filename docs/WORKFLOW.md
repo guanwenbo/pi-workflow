@@ -72,6 +72,8 @@ change-requested：变更流程，审批通过后回流到对应阶段
 | `verify_record` | 每个任务完成时 | 落 evidence.json；「完成」以证据为准 |
 | `log_append` | 任意 | 过程流水 `log/YYYY-MM-DD.md`（只追加） |
 | `dispatch_record` | 每次派发 | 校验模型绑定、记录派发与长跑进度 |
+| `pending_effects` | 跨仓写失败时 | 列出/重试/清空重试队列 |
+| `resume_hint` | 新会话/重启后第一件事 | 按状态算出「下一步命令 + 缺哪些文件」 |
 | `spec_merge` | /retro 归档 | 把 `spec-delta.md` 增量合并进 `specs/<capability>/spec.md` |
 | `answer_return` | 派生需求答复后 | 问答自动回传父仓，不再人工转发 |
 | `analyze` | /dev 之前 | 一致性闸：lint + 矩阵 + 产出齐全，只读 |

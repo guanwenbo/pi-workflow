@@ -903,10 +903,21 @@ async function stateTransition(args) {
   content = setFrontmatter(content, "status", to);
   content = setFrontmatter(content, "updated", today());
   content = appendStatusLog(content, from, to, note);
-  await writeMetaChecked(reqId, content, baseRev);
-  await registryMirrorStatus(reqId, to); // 镜像到注册中心（跨项目视图）
+  // 三处写入的顺序不是随意的：
+  // 1) 先写日志（纯追加，最不容易失败）
+  // 2) 再镜像注册中心（可能因文件锁/权限失败）
+  // 3) 最后写 00-meta —— 它是门禁的唯一真相，所以放最后；
+  //    这样即使前两步失败，状态也不会"看起来已经流转"。
+  // 镜像失败不吞：入队等下次加载补写，并把它报给调用方。
   await appendLog(reqId, "父Agent", `${from} → ${to}${note ? `｜${note}` : ""}`);
-  return { ok: true, reqId, from, to, tier, updated: today() };
+  let mirrored = true;
+  try { await registryMirrorStatus(reqId, to); }
+  catch (e) {
+    mirrored = false;
+    await enqueueEffect("registry_mirror", { reqId, status: to }, e.message).catch(() => {});
+  }
+  await writeMetaChecked(reqId, content, baseRev);
+  return { ok: true, reqId, from, to, tier, updated: today(), ...(mirrored ? {} : { warnings: ["注册中心镜像失败，已入重试队列"] }) };
 }
 
 // ---------- layer_scan：分层与域间依赖物理扫描（Java） ----------
@@ -1258,6 +1269,72 @@ async function reworkTop(args) {
   return { ok: true, total, reasons, hint: reasons.length ? `最高频打回原因：${reasons[0].reason}（${reasons[0].count} 次）——模板或画像该改这里` : "暂无打回记录" };
 }
 
+// ---------- resume_hint：告诉我下一步该干什么 ----------
+
+// 状态 → 下一步（不猜，照门禁表）
+const NEXT_BY_STATUS = {
+  draft: { command: "/req-clarify", why: "尚未澄清" },
+  clarifying: { command: "/req-clarify", why: "澄清未完成" },
+  clarified: { command: "/design", why: "方案未产出" },
+  designing: { command: "/review", why: "方案未评审" },
+  reviewed: { command: "人工复审确认", why: "必须由用户确认方案与用例后才可拆解" },
+  confirmed: { command: "/breakdown", why: "方案已确认，待拆任务" },
+  planned: { command: "/dev", why: "任务已拆解，开工前先跑 analyze" },
+  developing: { command: "/cr", why: "开发中/已完成，进 CR 前先 converge" },
+  "cr-agent": { command: "/cr", why: "Agent CR 未收敛" },
+  "cr-human": { command: "人工复验", why: "必须由用户确认 CR 结果" },
+  "cr-confirmed": { command: "/test-plan", why: "CR 已确认，进入测试" },
+  testing: { command: "/pre-release", why: "测试中/已完成" },
+  "ready-release": { command: "发布上线", why: "上线检查已完成" },
+  released: { command: "/retro", why: "已发布，待归档复盘" },
+  archived: { command: "无（已归档）", why: "流程结束" },
+  blocked: { command: "解除阻塞", why: "先解决 blocked 原因再流转" },
+  "change-requested": { command: "变更审批", why: "变更单待审批" },
+};
+
+// 各状态下"应当已存在"的产出（缺了就是卡住的原因）
+const EXPECTED_FILES = {
+  clarified: ["02-clarification.md"],
+  designing: ["02-clarification.md"],
+  reviewed: ["03-design.md", "08-test-plan.md"],
+  confirmed: ["03-design.md", "08-test-plan.md", "04-review.md"],
+  planned: ["05-tasks.md"],
+  developing: ["05-tasks.md"],
+  testing: ["05-tasks.md", "08-test-plan.md"],
+};
+
+/**
+ * 给出「下一步跑什么」：状态 → 命令 + 缺什么文件 + 门禁缺口。
+ * 为什么：换会话/重启后 agent 要自己读档案猜，容易跳步；这里把答案算出来。
+ */
+async function resumeHint(args) {
+  const { reqId } = args || {};
+
+  async function hintFor(id) {
+    let content;
+    try { content = await readMeta(id); } catch { return { reqId: id, error: "档案不存在" }; }
+    const status = parseStatus(content);
+    const tier = tierOf(content);
+    const need = EXPECTED_FILES[status] || [];
+    const missing = [];
+    for (const f of need) if (!(await exists(`requirements/${id}/${f}`))) missing.push(f);
+    const next = NEXT_BY_STATUS[status] || { command: "未知", why: `未登记的状态 ${status}` };
+    return {
+      reqId: id, title: fmField(content, "title"), status, tier, missing,
+      next: missing.length ? { command: "/" + (next.command.replace(/^\//, "")), why: `${next.why}；但先补齐：${missing.join("、")}`, blockedByMissing: true } : next,
+    };
+  }
+
+  if (reqId) return { ok: true, ...(await hintFor(reqId)) };
+
+  // 不传 reqId：列出当前工作区所有需求各自下一步
+  let dirs = [];
+  try { dirs = (await pi.fs.list("requirements")).filter(e => e.isDirectory && e.name.startsWith("REQ-")).map(e => e.name); } catch { return { ok: true, items: [], note: "当前工作区没有 requirements/" }; }
+  const items = [];
+  for (const id of dirs.sort().reverse().slice(0, 20)) items.push(await hintFor(id));
+  return { ok: true, items };
+}
+
 // ---------- 跨仓写：失败重试队列 ----------
 // 为什么需要：req_derive 投简报、answer_return 回父仓都要写「别的仓库」，
 // 对端目录不可达（没挂载/权限/临时故障）时旧实现直接失败即丢，用户以为已经同步了。
@@ -1301,7 +1378,11 @@ async function enqueueEffect(kind, args, error) {
 async function retryEffects() {
   const list = await readEffects();
   if (!list.length) return { ok: true, total: 0, retried: 0, failed: 0 };
-  const handlers = { answer_return: answerReturn, req_derive: reqDerive };
+  const handlers = {
+    answer_return: answerReturn,
+    req_derive: reqDerive,
+    registry_mirror: async ({ reqId, status }) => registryMirrorStatus(reqId, status),
+  };
   const now = Date.now();
   let retried = 0, failed = 0;
   const keep = [];
@@ -1746,6 +1827,16 @@ function diskVersion() {
   } catch { return null; }
 }
 
+// 通知抑制：同一条消息 10 分钟内不重复弹（timers/重试会反复触发同一状态）
+const toastSeen = new Map();
+async function notify(msg) {
+  const last = toastSeen.get(msg) || 0;
+  if (Date.now() - last < 10 * 60 * 1000) return false;
+  toastSeen.set(msg, Date.now());
+  try { await pi.ui.showToast(msg); } catch { /* 忽略 */ }
+  return true;
+}
+
 /** 加载时静默检查：同一版本只提示一次，失败不打扰 */
 async function autoCheckUpdate() {
   // 先看磁盘：磁盘比内存新，说明自动更新已落盘但还没重载，这个必须提示，否则用户以为没更新
@@ -1758,7 +1849,7 @@ async function autoCheckUpdate() {
       if (prev && prev.notifiedFor === key) return { ok: true, pendingReload: true, version: disk };
       writeUpdateState({ ...prev, notifiedFor: key, pendingReload: disk });
       try {
-        await pi.ui.showToast(`PI-Workflow 已更新到 ${disk}（运行中仍是 ${mem}）：重启 App 或 Plugins 页 Reload 后生效`);
+        await notify(`PI-Workflow 已更新到 ${disk}（运行中仍是 ${mem}）：重启 App 或 Plugins 页 Reload 后生效`);
       } catch { /* toast 失败不影响使用 */ }
       return { ok: true, pendingReload: true, current: mem, version: disk, notified: true };
     }
@@ -1774,7 +1865,7 @@ async function autoCheckUpdate() {
     const applied = await autoApplyUpdate(r);
     if (applied && applied.ok && !applied.alreadyApplied) {
       try {
-        await pi.ui.showToast(`PI-Workflow 已自动更新到 ${r.latest}：重启 App（或 Plugins 页 Reload）后生效`);
+        await notify(`PI-Workflow 已自动更新到 ${r.latest}：重启 App（或 Plugins 页 Reload）后生效`);
       } catch { /* toast 失败无所谓 */ }
       return { ...r, applied, notified: true };
     }
@@ -1782,7 +1873,7 @@ async function autoCheckUpdate() {
     if (prev && prev.notifiedFor === r.latest) return { ...r, notified: false, applied };
     writeUpdateState({ ...prev, ...r, notifiedFor: r.latest });
     try {
-      await pi.ui.showToast(`PI-Workflow 插件有新版本 ${r.latest}（当前 ${r.current}）：命令面板搜「检查插件更新」`);
+      await notify(`PI-Workflow 插件有新版本 ${r.latest}（当前 ${r.current}）：命令面板搜「检查插件更新」`);
     } catch { /* toast 失败无所谓 */ }
     return { ...r, notified: true };
   } catch (e) {
@@ -2115,25 +2206,36 @@ const TOOLS = [
       if (!reqId) throw new Error("缺少必填参数：reqId");
       const matrix = await checks.traceMatrix(reqId);
       const items = [];
-      for (const ac of matrix.gaps.acNoTask) items.push(`补 ${ac} 的实现任务（当前无用例承接）`);
-      for (const t of matrix.gaps.taskNoEvidence) items.push(`补 ${t} 的验收证据（已勾选但无 verify 记录）`);
-      for (const t of matrix.gaps.taskNoVerify) items.push(`补 ${t} 的 verify 命令（任务须可验证）`);
+      for (const ac of matrix.gaps.acNoTask) items.push({ text: `补 ${ac} 的实现任务（当前无用例承接）`, key: `task:${ac}` });
+      for (const t of matrix.gaps.taskNoEvidence) items.push({ text: `补 ${t} 的验收证据（已勾选但无 verify 记录）`, key: `evidence:${t}` });
+      for (const t of matrix.gaps.taskNoVerify) items.push({ text: `补 ${t} 的 verify 命令（任务须可验证）`, key: `verify:${t}` });
       const clean = !items.length;
       let file = null;
       if (!clean && append) {
         file = `requirements/${reqId}/05-tasks.md`;
         let doc;
         try { doc = await pi.fs.readText(file); } catch { throw new Error(`缺少 ${file}，先执行 /breakdown`); }
-        const block = ['\n## 收敛补充', '', ...items.map((x, i) => `- [ ] ${x}`), ''].join("\n");
-        if (doc.includes("## 收敛补充")) {
-          doc = doc.replace(/## 收敛补充[\s\S]*?(?=\n## |\s*$)/, m => m.replace(/\s*$/, "") + "\n" + items.map((x, i) => `- [ ] ${x}`).join("\n") + "\n");
-        } else {
-          doc = doc.replace(/\s*$/, "\n") + block;
+        // 逐条独立：已存在的条目跳过（不重复追加），其余各自入列，一条失败不影响其他
+        const results = items.map(it => ({ ...it, added: !doc.includes(it.text) }));
+        const fresh = results.filter(r => r.added);
+        if (fresh.length) {
+          const lines = fresh.map(r => `- [ ] ${r.text}`);
+          if (doc.includes("## 收敛补充")) {
+            doc = doc.replace(/## 收敛补充[\s\S]*?(?=\n## |\s*$)/, m => m.replace(/\s*$/, "") + "\n" + lines.join("\n") + "\n");
+          } else {
+            doc = doc.replace(/\s*$/, "\n") + ["\n## 收敛补充", "", ...lines, ""].join("\n");
+          }
+          await pi.fs.writeText(file, doc);
+          await appendLog(reqId, "父Agent", `converge 追加 ${fresh.length} 项到 05-tasks`);
         }
-        await pi.fs.writeText(file, doc);
-        await appendLog(reqId, "父Agent", `converge 追加 ${items.length} 项到 05-tasks`);
+        return {
+          ok: !fresh.length, reqId, clean: !fresh.length,
+          items: results.map(r => ({ text: r.text, status: r.added ? "已追加" : "已存在，跳过" })),
+          appended: fresh.length, file,
+          next: fresh.length ? "实现补齐项后重跑 converge" : "缺口已在任务清单里，完成后重跑",
+        };
       }
-      return { ok: clean, reqId, clean, appended: clean ? 0 : items.length, items, file, next: clean ? "可以进入 /cr" : "实现补齐项后重跑 converge" };
+      return { ok: clean, reqId, clean, appended: 0, items: [], file, next: "可以进入 /cr" };
     },
   },
   {
@@ -2218,6 +2320,16 @@ const TOOLS = [
       const res = retry ? await retryEffects() : { ok: true, pending: (await readEffects()).length };
       return { ...res, items: (await readEffects()).map(e => ({ kind: e.kind, attempts: e.attempts, due: e.due, lastError: e.lastError, args: e.args })) };
     },
+  },
+  {
+    name: "resume_hint",
+    description: "下一步该做什么：按 00-meta 的 status + 现有产出算出「下一条命令 + 缺哪些文件 + 门禁缺口」。换会话/重启后先调它，避免凭记忆跳步。不传 reqId 则列出本工作区所有需求的下一步。",
+    risk: "low",
+    schema: {
+      type: "object",
+      properties: { reqId: { type: "string", description: "需求编号；不传则列出全部" } },
+    },
+    execute: resumeHint,
   },
 ];
 
